@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · ThoughtPattern</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{--bg:#EEF0EE;--surface:#fff;--ink:#1D2729;--muted:#5B686C;--line:#D5DBDA;--accent:#2F5470}
+@media (prefers-color-scheme:dark){:root{--bg:#111719;--surface:#182022;--ink:#E3E8E8;--muted:#95A3A6;--line:#2D383B;--accent:#8DB3D3}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding:32px 16px 64px}
+main{max-width:720px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px 24px}
+h1{font-family:Georgia,serif;font-weight:500;font-size:32px;margin:0 0 4px}
+h1 em{color:var(--accent)}
+h2{font-size:17px;margin:28px 0 6px}
+p,li{margin:6px 0}
+.muted{color:var(--muted);font-size:14px}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<h1>Thought<em>Pattern</em> · Privacy</h1>
+<p class="muted">Last updated 25 September 2026</p>
+
+<p>ThoughtPattern is a private journaling app. This page explains, in plain language, what happens to what you write.</p>
+
+<h2>What stays on your device</h2>
+<p>Your journal entries, AI readings and settings are saved in your browser on your own device. We don't have a copy of them unless you choose to sign in and sync (below).</p>
+
+<h2>What is sent to an AI service</h2>
+<p>To create a quick read or a Pattern analysis, the text of your entries is sent through our server to OpenAI, which generates the reading and sends it back. Our server does not store your entries. OpenAI processes the text to produce the reading under its API terms; it is not used by us for anything else.</p>
+
+<h2>If you sign in to sync (optional)</h2>
+<ul>
+<li>You can sign in with Google or an email link. We receive your email address and a user ID so we can keep your synced journal separate from everyone else's.</li>
+<li>Before anything leaves your device, your entries are <b>encrypted on your device</b> with a passphrase only you know. Our database (hosted by Supabase) stores only this encrypted data, so we cannot read your journal.</li>
+<li>If you forget your passphrase, the cloud copy cannot be recovered by anyone. Entries on your device are not affected.</li>
+</ul>
+
+<h2>What we don't do</h2>
+<ul>
+<li>No ads, no selling or sharing your data, no tracking across other sites.</li>
+<li>We don't read, review or analyse your journal ourselves.</li>
+</ul>
+
+<h2>Your choices</h2>
+<ul>
+<li><b>Delete entries</b> at any time in the app.</li>
+<li><b>Delete your cloud data</b> from Account → "Delete my cloud data". This removes your encrypted journal and profile from our database.</li>
+<li><b>Export</b> your entries as a file at any time.</li>
+<li>To delete your account entirely or ask any privacy question, email us (below).</li>
+</ul>
+
+<h2>Not for children</h2>
+<p>ThoughtPattern is for adults aged 18 and over.</p>
+
+<h2>Not medical advice</h2>
+<p>Readings are reflections and possibilities, not diagnoses or therapy. If you are in distress in India, call Tele-MANAS on <a href="tel:14416">14416</a> or KIRAN on <a href="tel:18005990019">1800-599-0019</a> (free, 24×7), or your local emergency number.</p>
+
+<h2>Services we use</h2>
+<ul>
+<li>Netlify (hosts the app and our server function)</li>
+<li>OpenAI (creates the AI readings)</li>
+<li>Supabase (sign-in and encrypted sync, only if you sign in)</li>
+<li>Google (only if you choose "Continue with Google")</li>
+</ul>
+
+<h2>Contact</h2>
+<p>Questions, requests or grievances: <a href="mailto:abhilashabi15@gmail.com">abhilashabi15@gmail.com</a>. We aim to reply within 7 days.</p>
+
+<p class="muted"><a href="/">← Back to ThoughtPattern</a></p>
+</main>
+</body>
+</html>

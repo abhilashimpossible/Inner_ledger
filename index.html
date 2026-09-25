@@ -159,6 +159,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .small{font-size:12px;color:var(--muted)}
 .ok{color:var(--good);font-size:13px}
 .fine{font-size:12px;color:var(--muted);margin:4px 0 0}
+.fine a{color:inherit}
 .intro{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 24px) 24px calc(env(safe-area-inset-bottom,0px) + 24px);overflow:auto;transition:opacity .25s ease}
 .intro.out{opacity:0}
 .intro-in{width:100%;max-width:400px;display:flex;flex-direction:column;gap:28px}
@@ -229,7 +230,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     <div>
       <h1>Thought<em>Pattern</em></h1>
       <p class="sub">Write freely. AI reflects back the patterns in how you think and feel.</p>
-      <p class="fine">Private · Not therapy or medical advice · 18+</p>
+      <p class="fine">Private · Not therapy or medical advice · 18+ · <a href="privacy.html">Privacy</a></p>
     </div>
     <div class="btnrow">
       <div class="store"><span class="dot" id="storeDot"></span><span id="storeText">Saved on this device</span></div>
