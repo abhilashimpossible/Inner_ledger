@@ -308,26 +308,50 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 
   // ---------- OpenAI (Responses API, JSON mode) ----------
   // ---------- AI (via this site's own server function; the key never reaches the browser) ----------
-  async function callAI(payload, signal){
-    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 150000);
-    const onAbort = () => ctl.abort(); signal?.addEventListener("abort", onAbort);
+  // Starts the job, then checks back every few seconds until the answer is ready.
+  const sleep = (ms, signal) => new Promise((ok, no) => { const t = setTimeout(ok, ms); signal.addEventListener("abort", () => { clearTimeout(t); no(); }, {once:true}); });
+  async function aiFetch(url, opts, signal){
     let res, body;
     try{
-      res = await fetch("/api/ai", { method:"POST", signal: ctl.signal, headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      res = await fetch(url, { ...opts, signal, cache: "no-store" });
       body = await res.json().catch(() => null);
     }catch(e){
-      if (signal?.aborted) throw {code:"cancelled"};
-      if (ctl.signal.aborted) throw {message:"The AI took too long to answer. Please try again."};
+      if (signal.aborted) throw {aborted:true};
       throw {message:"Couldn't connect. Check your internet connection and try again."};
-    }finally{ clearTimeout(t); signal?.removeEventListener("abort", onAbort); }
-    if (!res.ok || !body?.data){
+    }
+    if (!res.ok){
       if (body?.error) throw {message: body.error};
       if (res.status === 404) throw {message:"The AI service isn't set up on this site yet (the server function is missing). The site needs to be deployed from GitHub, not by drag-and-drop."};
       if (res.status === 401 || res.status === 403) throw {message:"This site is private, so the AI service is blocked. Make the site public in Netlify, then try again."};
-      if (res.status === 504) throw {message:"The AI took too long to answer (the server allows about a minute). Please try again."};
       throw {message:`The AI service returned an unexpected error (${res.status}). Please try again.`};
     }
-    return body.data;
+    return body || {};
+  }
+  async function callAI(payload, signal){
+    const limit = payload.kind === "deep" ? 600000 : 180000; // up to 10 min for the full analysis
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), limit);
+    const onAbort = () => ctl.abort(); signal?.addEventListener("abort", onAbort);
+    let id = null;
+    try{
+      const start = await aiFetch("/api/ai", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }, ctl.signal);
+      if (start.data) return start.data;
+      id = start.id;
+      if (!id) throw {message:"The AI service returned an unexpected reply. Please try again."};
+      for (let i = 0; ; i++){
+        await sleep(i < 5 ? 2000 : 4000, ctl.signal);
+        const r = await aiFetch("/api/ai?id=" + encodeURIComponent(id), { method:"GET" }, ctl.signal);
+        if (r.data){ id = null; return r.data; }
+        if (!r.pending){ id = null; throw {message:"The AI service returned an unexpected reply. Please try again."}; }
+      }
+    }catch(e){
+      if (e?.message) throw e;
+      if (signal?.aborted) throw {code:"cancelled"};
+      throw {message:"The AI took too long to answer. Please try again."};
+    }finally{
+      clearTimeout(t); signal?.removeEventListener("abort", onAbort);
+      // If we gave up before collecting the answer, cancel it so nothing is left stored at OpenAI.
+      if (id) fetch("/api/ai?id=" + encodeURIComponent(id), { method:"DELETE", keepalive:true }).catch(() => {});
+    }
   }
 
   async function readEntry(entry){

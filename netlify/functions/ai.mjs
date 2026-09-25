@@ -8,10 +8,10 @@ const MAX_ENTRY_CHARS = 8000;
 const MAX_TOTAL_CHARS = 60000;
 const MAX_ENTRIES = 200;
 // Netlify kills functions after 60s (not configurable), so we keep well inside that.
-const DEADLINE_MS = 52000;
+const DEADLINE_MS = 25000; // only for starting a job, which should take a second or two
 // Lower reasoning effort = much faster replies. Override with env vars if you want deeper thinking.
 const QUICK_EFFORT = process.env.QUICK_EFFORT || "low";
-const DEEP_EFFORT  = process.env.DEEP_EFFORT  || "low";
+const DEEP_EFFORT  = process.env.DEEP_EFFORT  || ""; // "" = the model's own default
 
 const QUICK_INSTR = `You are a reflective psychology assistant reading one private journal entry. Reply with ONLY a JSON object:
 {"mood": "1-3 word emotional label", "valence": integer from -5 (very distressed) to 5 (very positive), "tags": [up to 3 short names of CBT cognitive distortions or psychodynamic defense mechanisms clearly present, or []], "note": "one gentle, specific sentence (max 20 words) naming the main dynamic you notice, addressed to the writer as 'you'"}
@@ -39,13 +39,14 @@ Emotion intensity is an integer 0-10. Give 2-5 patterns, up to 5 distortions, 1-
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
-async function post(url, key, body, deadline){
-  const ms = deadline - Date.now();
-  if (ms < 3000) return { timeout: true };
+const API = "https://api.openai.com/v1";
+
+async function call(method, path, key, body, deadline){
+  const ms = Math.max(1000, (deadline || Date.now() + 20000) - Date.now());
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
   try{
-    const r = await fetch(url, { method: "POST", signal: ctl.signal,
-      headers: { "content-type": "application/json", authorization: `Bearer ${key}` }, body: JSON.stringify(body) });
+    const r = await fetch(API + path, { method, signal: ctl.signal,
+      headers: { "content-type": "application/json", authorization: `Bearer ${key}` }, body: body ? JSON.stringify(body) : undefined });
     const b = await r.json().catch(() => null);
     return { r, b };
   }catch(e){
@@ -54,29 +55,26 @@ async function post(url, key, body, deadline){
   }finally{ clearTimeout(t); }
 }
 
-async function callOpenAI(model, instructions, input, key, effort, deadline){
-  const base = { model, instructions, input, text: { format: { type: "json_object" } }, store: false };
-  let res = await post("https://api.openai.com/v1/responses", key, effort ? { ...base, reasoning: { effort } } : base, deadline);
-  // Some models don't accept a reasoning setting; retry once without it (this fails fast, so it's cheap).
-  if (!res.timeout && res.r.status === 400 && effort && /reasoning|effort/i.test(res.b?.error?.message || ""))
-    res = await post("https://api.openai.com/v1/responses", key, base, deadline);
-  if (res.timeout) return { ok: false, timeout: true };
-  let { r, b: body } = res;
-  if (r.ok){
-    let text = body?.output_text || "";
-    if (!text) for (const item of body?.output || []) for (const c of item?.content || []) if (c?.type === "output_text") text += c.text;
-    return { ok: true, text, incomplete: body?.status === "incomplete" };
-  }
-  // Only fall back to Chat Completions when the Responses API itself isn't available for this model/account
-  // (not for server errors, which would just burn the remaining time).
-  if (![400, 404].includes(r.status)) return { ok: false, status: r.status, message: body?.error?.message };
-  res = await post("https://api.openai.com/v1/chat/completions", key,
-    { model, messages: [{ role: "system", content: instructions }, { role: "user", content: input }], response_format: { type: "json_object" } }, deadline);
-  if (res.timeout) return { ok: false, timeout: true };
-  ({ r, b: body } = res);
-  if (!r.ok) return { ok: false, status: r.status, message: body?.error?.message };
-  return { ok: true, text: body?.choices?.[0]?.message?.content || "", incomplete: body?.choices?.[0]?.finish_reason === "length" };
+// Pull the text out of a finished Responses API object.
+function outputText(body){
+  let text = body?.output_text || "";
+  if (!text) for (const item of body?.output || []) for (const c of item?.content || []) if (c?.type === "output_text") text += c.text;
+  return text;
 }
+
+// Starts the job in OpenAI's "background mode": OpenAI returns an id at once and keeps working,
+// so no single request to this site has to wait on Netlify's 60-second limit.
+// store:true is needed for background mode; we delete the stored response as soon as it's collected.
+async function startJob(model, instructions, input, key, effort, deadline){
+  const base = { model, instructions, input, text: { format: { type: "json_object" } }, background: true, store: true };
+  let res = await call("POST", "/responses", key, effort ? { ...base, reasoning: { effort } } : base, deadline);
+  // Some models don't accept a reasoning setting; retry once without it (fails fast, so it's cheap).
+  if (!res.timeout && res.r.status === 400 && effort && /reasoning|effort/i.test(res.b?.error?.message || ""))
+    res = await call("POST", "/responses", key, base, deadline);
+  return res;
+}
+
+const deleteJob = (id, key) => call("DELETE", `/responses/${id}`, key).catch(() => {});
 
 function parseJSON(text){
   try { return JSON.parse(text); } catch {}
@@ -85,11 +83,49 @@ function parseJSON(text){
   return null;
 }
 
+const errorFor = (res) => {
+  if (res.timeout) return json(504, { error: "The AI service didn't respond in time. Please try again." });
+  console.error("OpenAI error", res.r.status, res.b?.error?.message);
+  if (res.r.status === 429) return json(503, { error: "The AI is busy or the app's AI budget is used up. Please try again later." });
+  return json(502, { error: "The AI service returned an error. Please try again in a moment." });
+};
+
 export default async (req) => {
-  const deadline = Date.now() + DEADLINE_MS;
-  if (req.method !== "POST") return json(405, { error: "Use POST." });
   const key = process.env.OPENAI_API_KEY;
   if (!key) return json(500, { error: "The app isn't set up yet: OPENAI_API_KEY is missing on the server." });
+  const url = new URL(req.url);
+
+  // --- Check on (GET) or cancel (DELETE) a job that's already running ---
+  if (req.method === "GET" || req.method === "DELETE"){
+    const id = url.searchParams.get("id") || "";
+    if (!/^resp_[A-Za-z0-9_-]{8,100}$/.test(id)) return json(400, { error: "Bad request." });
+    if (req.method === "DELETE"){
+      await call("POST", `/responses/${id}/cancel`, key).catch(() => {});
+      await deleteJob(id, key);
+      return json(200, { ok: true });
+    }
+    try{
+      const res = await call("GET", `/responses/${id}`, key, null, Date.now() + 20000);
+      if (res.timeout || !res.r.ok) return errorFor(res);
+      const body = res.b; const status = body?.status;
+      if (status === "queued" || status === "in_progress") return json(200, { pending: true });
+      await deleteJob(id, key); // collected (or failed): remove it from OpenAI's storage
+      if (status === "incomplete") return json(502, { error: "The reply was cut short. Please try again." });
+      if (status !== "completed"){
+        console.error("OpenAI job ended as", status, body?.error?.message);
+        return json(502, { error: "The AI couldn't finish this one. Please try again." });
+      }
+      const data = parseJSON(outputText(body));
+      if (!data || typeof data !== "object" || Array.isArray(data)) return json(502, { error: "The reply came back in an unexpected format. Please try again." });
+      return json(200, { data });
+    }catch(e){
+      console.error(e);
+      return json(502, { error: "Couldn't reach the AI service. Please try again." });
+    }
+  }
+
+  if (req.method !== "POST") return json(405, { error: "Use POST." });
+  const deadline = Date.now() + DEADLINE_MS;
 
   let payload;
   try { payload = await req.json(); } catch { return json(400, { error: "Bad request." }); }
@@ -116,17 +152,11 @@ export default async (req) => {
   }
 
   try{
-    const r = await callOpenAI(model, instructions, input, key, effort === "none" ? "" : effort, deadline);
-    if (r.timeout) return json(504, { error: "The AI took too long to answer (the server allows about a minute). Please try again; if it keeps happening, the analysis may need a faster model." });
-    if (!r.ok){
-      console.error("OpenAI error", r.status, r.message);
-      if (r.status === 429) return json(503, { error: "The AI is busy or the app's AI budget is used up. Please try again later." });
-      return json(502, { error: "The AI service returned an error. Please try again in a moment." });
-    }
-    if (r.incomplete) return json(502, { error: "The reply was cut short. Please try again." });
-    const data = parseJSON(r.text);
-    if (!data || typeof data !== "object" || Array.isArray(data)) return json(502, { error: "The reply came back in an unexpected format. Please try again." });
-    return json(200, { data });
+    const res = await startJob(model, instructions, input, key, effort === "none" ? "" : effort, deadline);
+    if (res.timeout || !res.r.ok) return errorFor(res);
+    const id = res.b?.id;
+    if (!id) return json(502, { error: "The AI service returned an error. Please try again in a moment." });
+    return json(202, { id });
   }catch(e){
     console.error(e);
     return json(502, { error: "Couldn't reach the AI service. Please try again." });
