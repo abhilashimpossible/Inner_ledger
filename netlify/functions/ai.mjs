@@ -6,7 +6,9 @@ const QUICK_MODEL = process.env.QUICK_MODEL || "gpt-6-luna";
 const DEEP_MODEL  = process.env.DEEP_MODEL  || "gpt-6-sol";
 const MAX_ENTRY_CHARS = 8000;
 const MAX_TOTAL_CHARS = 60000;
-const MAX_ENTRIES = 200;
+const MAX_ENTRIES = 500;
+const DIRECT_TOTAL_CHARS = 24000; // smaller input when answering directly, so it finishes within Netlify's 60s
+const BRIEF_TOTAL_CHARS = 14000;  // older entries are sent as one-line summaries from their quick reads
 // Netlify kills functions after 60s (not configurable), so we keep well inside that.
 const DEADLINE_MS = 25000; // only for starting a job, which should take a second or two
 // Lower reasoning effort = much faster replies. Override with env vars if you want deeper thinking.
@@ -84,13 +86,15 @@ function parseJSON(text){
   return null;
 }
 
+// Friendly messages for users; the technical reason goes to the Netlify function log.
 const errorFor = (res) => {
-  if (res.timeout) return json(504, { error: "The AI service didn't respond in time. Please try again." });
-  console.error("OpenAI error", res.r.status, res.b?.error?.message);
-  if (res.r.status === 429) return json(503, { error: "The AI is busy or the app's AI budget is used up. Please try again later." });
-  // Include OpenAI's own reason (it never contains the key or journal text) so problems can be diagnosed.
-  const why = String(res.b?.error?.message || "").slice(0, 300);
-  return json(502, { error: `The AI service returned an error (${res.r.status}${why ? ": " + why : ""}).` });
+  if (res.timeout) return json(504, { error: "The AI didn't respond in time. Please try again." });
+  const st = res.r.status, why = String(res.b?.error?.message || "");
+  console.error("OpenAI error", st, why);
+  if (st === 429) return json(503, { error: /quota|billing|budget|limit/i.test(why) ? "The app's AI budget is used up for now. Please try again later." : "The AI is busy right now. Please try again in a minute." });
+  if (st === 401 || st === 403) return json(502, { error: "The AI service isn't set up correctly (code AUTH). Please try again later." });
+  if (st === 404 || /model/i.test(why)) return json(502, { error: "The AI model isn't available right now (code MODEL). Please try again later." });
+  return json(502, { error: `The AI service had a problem (code ${st}). Please try again in a moment.` });
 };
 
 // Ask OpenAI directly and wait for the answer (must finish inside Netlify's 60s limit, so use low effort).
@@ -101,8 +105,8 @@ async function direct(model, instructions, input, key, eff, bgWhy = ""){
     d = await call("POST", "/responses", key, base, Date.now() + 45000);
   if (d.timeout) return json(504, { error: "The AI took too long to answer. Please try again." });
   if (!d.r.ok){
-    const r = errorFor(d); const b = await r.json();
-    return json(r.status, { error: b.error + (bgWhy ? ` [background: ${bgWhy}]` : "") });
+    if (bgWhy) console.error("Background start had failed with:", bgWhy);
+    return errorFor(d);
   }
   if (d.b?.status === "incomplete") return json(502, { error: "The reply was cut short. Please try again." });
   const data = parseJSON(outputText(d.b));
@@ -162,14 +166,24 @@ export default async (req) => {
   } else if (payload?.kind === "deep"){
     const list = Array.isArray(payload.entries) ? payload.entries.slice(0, MAX_ENTRIES) : [];
     if (!list.length) return json(400, { error: "No entries to analyse." });
-    let budget = MAX_TOTAL_CHARS; const parts = [];
+    // Newest entries go in full; once the budget is used, older ones go in as short summaries
+    // (mood, thinking traps, note from their quick read), so long journals stay fast.
+    let budget = payload.direct === true ? DIRECT_TOTAL_CHARS : MAX_TOTAL_CHARS, briefBudget = BRIEF_TOTAL_CHARS;
+    const full = [], brief = [];
     for (const e of list){ // newest first
-      const s = `[${String(e?.date || "").slice(0, 16)}]\n${String(e?.text || "").slice(0, MAX_ENTRY_CHARS)}`;
-      if (budget - s.length < 0) break; budget -= s.length; parts.push(s);
+      const date = String(e?.date || "").slice(0, 16);
+      const s = `[${date}]\n${String(e?.text || "").slice(0, MAX_ENTRY_CHARS)}`;
+      if (!brief.length && (s.length <= budget || !full.length)){ budget -= s.length; full.push(s); continue; }
+      const r = e?.reading || {};
+      const tags = Array.isArray(r.tags) ? r.tags.slice(0, 3).map(t => String(t).slice(0, 40)).join(", ") : "";
+      const b = `[${date}] mood: ${String(r.mood || "not read").slice(0, 40)} (${Number(r.valence) || 0}); traps: ${tags || "none"}; ${String(r.note || "").slice(0, 160)}`;
+      if (briefBudget - b.length < 0) break; briefBudget -= b.length; brief.push(b);
     }
-    parts.reverse();
+    full.reverse(); brief.reverse();
+    const shown = full.length + brief.length;
+    input = (brief.length ? `Older entries, summarised from earlier quick reads (oldest first, ${brief.length}):\n${brief.join("\n")}\n\n` : "")
+      + `Journal entries in full, oldest first (${full.length}${shown < list.length ? `; ${list.length - shown} oldest entries not included` : ""}):\n\n${full.join("\n\n---\n\n")}`;
     model = DEEP_MODEL; instructions = DEEP_INSTR; effort = DEEP_EFFORT;
-    input = `Journal entries, oldest first (${parts.length} of ${list.length}):\n\n${parts.join("\n\n---\n\n")}`;
   } else {
     return json(400, { error: "Unknown request." });
   }

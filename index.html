@@ -132,7 +132,8 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .err{color:var(--crit);font-size:14px}
 
 
-/* voice + templates */
+/* templates */
+.left-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .composer-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .grid > *{min-width:0}
 .composer{min-width:0}
@@ -145,17 +146,6 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .prompt-line{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-family:var(--serif);font-size:17px;line-height:1.45}
 .prompt-line .q-text{flex:1}
 .prompt-line .ctl{display:flex;gap:2px;flex-shrink:0}
-.left-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.mic{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 14px}
-.mic svg{width:16px;height:16px}
-.recorder{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--rose-soft);border:1px solid var(--rose);border-radius:10px;padding:10px 12px}
-.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--crit);animation:pulse 1.2s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.35}}
-@media (prefers-reduced-motion:reduce){.rec-dot{animation:none}}
-.rec-time{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;min-width:3.2em}
-.rec-level{flex:1;min-width:60px;height:6px;border-radius:3px;background:var(--surface);overflow:hidden}
-.rec-level i{display:block;height:100%;width:0;background:var(--rose);transition:width .08s linear}
-.rec-status{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
 /* standalone additions */
 .settings{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .settings .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -168,6 +158,33 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .small{font-size:12px;color:var(--muted)}
 .ok{color:var(--good);font-size:13px}
+.fine{font-size:12px;color:var(--muted);margin:4px 0 0}
+.notice{background:var(--accent-soft);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.notice p{margin:0}
+.notice a{color:var(--accent);font-weight:500}
+/* monthly recap */
+.recap{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.recap:empty{display:none}
+.recap-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.recap-head h3{margin:0;font-size:15px;font-weight:600}
+.month-nav{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.month-nav button{padding:2px 9px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .v{font-family:var(--serif);font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat .k{font-size:11px;color:var(--muted)}
+.recap .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px}
+@media (max-width:560px){.recap .row2{grid-template-columns:1fr}}
+.recap .spark{height:44px}
+.share-row{display:flex;justify-content:flex-end}
+/* share dialog */
+dialog#shareDlg{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:16px;width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto}
+dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
+#shareDlg[open]{display:flex;flex-direction:column;gap:10px}
+.dlg-head{display:flex;justify-content:space-between;align-items:center}
+#shareImg{width:100%;max-height:52dvh;object-fit:contain;border-radius:8px;background:var(--surface-2)}
+.share-opts{display:flex;flex-wrap:wrap;gap:12px;font-size:14px}
+.share-opts label{display:flex;gap:6px;align-items:center}
 </style>
 </head>
 <body>
@@ -176,12 +193,26 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
     <div>
       <h1>Thought<em>Pattern</em></h1>
       <p class="sub">Write what's on your mind. Each entry is kept on this device, and an AI model reads across all of them to reflect back recurring patterns through several psychological lenses.</p>
+      <p class="fine">A reflection tool, not therapy or medical advice. For adults 18+.</p>
     </div>
     <div class="btnrow">
       <div class="store"><span class="dot" id="storeDot"></span><span id="storeText">Saved on this device</span></div>
       <button type="button" id="settingsBtn">Backup</button>
     </div>
   </header>
+
+  <section class="notice" id="welcome" hidden>
+    <b>Before you start</b>
+    <p>ThoughtPattern is for adults (18+). It's a space to reflect, not a replacement for a therapist, doctor or crisis help, and its readings are possibilities, not diagnoses.</p>
+    <p>Your entries stay on this device. To create readings, the text of an entry is sent to an AI service (OpenAI); it isn't kept on our servers.</p>
+    <p>If you're under 18, please talk to a trusted adult. If you're struggling, call <a href="tel:14416">Tele-MANAS 14416</a> or <a href="tel:18005990019">KIRAN 1800-599-0019</a> (India, free, 24×7).</p>
+    <div class="btnrow"><button type="button" class="primary" id="welcomeOk">I'm 18+ and I understand</button></div>
+  </section>
+
+  <section class="notice" id="backupNudge" hidden>
+    <span id="backupNudgeText"></span>
+    <div class="btnrow"><button type="button" class="primary" id="backupNow">Export a backup</button><button type="button" class="ghost" id="backupLater">Later</button></div>
+  </section>
 
   <section class="settings" id="settings" hidden>
     <span class="label">Backup</span>
@@ -210,17 +241,8 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
           </span>
         </div>
         <textarea id="entryText" placeholder="What happened today, and how did it feel? Write freely, or pick a template or prompt above."></textarea>
-        <div class="recorder" id="recorder" hidden>
-          <span class="rec-dot" id="recDot"></span>
-          <span class="rec-time" id="recTime">0:00</span>
-          <span class="rec-level" aria-hidden="true"><i id="recLevel"></i></span>
-          <span class="rec-status" id="recStatus" hidden><span class="spin"></span><span>Turning your voice into text…</span></span>
-          <button type="button" class="primary" id="recStop">Stop &amp; transcribe</button>
-          <button type="button" class="ghost" id="recCancel">Cancel</button>
-        </div>
         <div class="row">
           <div class="left-tools">
-            <button type="button" class="mic" id="micBtn" aria-label="Record your voice" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg><span>Record</span></button>
             <span class="hint" id="countHint"></span>
           </div>
           <button type="submit" class="primary" id="saveBtn">Save entry</button>
@@ -246,11 +268,19 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
       <div class="lens-row">
         <span class="lens">CBT distortions</span><span class="lens">Schema therapy</span><span class="lens">Psychodynamic defenses</span><span class="lens">Attachment</span><span class="lens">Emotion &amp; needs</span>
       </div>
+      <section class="recap" id="recap"></section>
       <div id="analysis"></div>
       <p class="disclaimer">This is a reflective tool, not a diagnosis or a substitute for a therapist. Its readings are hypotheses to test against your own experience. If you are in distress in India, call Tele-MANAS on 14416 (24×7, free), or your local emergency number.</p>
     </aside>
   </div>
 </div>
+<dialog id="shareDlg" aria-labelledby="shareTitle">
+  <div class="dlg-head"><b id="shareTitle">Share card</b><button type="button" class="ghost" id="shareClose" aria-label="Close">✕</button></div>
+  <img id="shareImg" alt="Preview of the card to share">
+  <div class="share-opts" id="shareOpts"></div>
+  <p class="small">The card never includes your entries. Check it before sharing in case a line mentions something personal.</p>
+  <div class="btnrow"><button type="button" class="primary" id="shareGo">Share</button><button type="button" id="shareSave">Save image</button><span class="small" id="shareMsg"></span></div>
+</dialog>
 <nav class="tabs" role="tablist" aria-label="Sections">
   <button type="button" role="tab" id="tabJournal" aria-selected="true">Journal</button>
   <button type="button" role="tab" id="tabReading" aria-selected="false">Pattern</button>
@@ -293,6 +323,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 
   // ---------- storage (this browser only) ----------
   const LS_DATA = "inner-ledger-data", LS_DRAFT = "inner-ledger-draft";
+  const LS_ACK = "inner-ledger-ack", LS_BACKUP = "inner-ledger-backup-at", LS_SNOOZE = "inner-ledger-backup-snooze";
   const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
 
@@ -388,7 +419,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
     if (!entries.length) return;
     analysing = true; analysisErr = ""; analysisCtl = new AbortController(); renderAnalysis();
     try{
-      const data = await callAI({kind:"deep", entries: entries.map(e => ({date: new Date(e.createdAt).toISOString().replace("T"," "), text: e.text}))}, analysisCtl.signal);
+      const data = await callAI({kind:"deep", entries: entries.map(e => ({date: new Date(e.createdAt).toISOString().replace("T"," "), text: e.text, reading: e.reading ? {mood: e.reading.mood, valence: e.reading.valence, tags: e.reading.tags, note: e.reading.note} : undefined}))}, analysisCtl.signal);
       if (!data || typeof data !== "object" || Array.isArray(data)) throw {message:"The reply came back in an unexpected format. Press Analyse to try again."};
       analysis = {data, at: Date.now(), count: entries.length};
       persist();
@@ -464,6 +495,9 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
       return;
     }
 
+    if (!showingExamples() && !data.risk?.flag && (arr(data.patterns).length || data.summary)){
+      const row = el("div","share-row"); const b = el("button",null,"Share my pattern"); b.type = "button"; b.onclick = () => openShare("pattern"); row.append(b); box.append(row);
+    }
     if (data.risk?.flag){
       const r = el("div","risk"); r.append(el("b",null,"Please look after yourself right now. "), document.createTextNode((data.risk.note ? data.risk.note + " " : "") + "You can talk to someone today: Tele-MANAS 14416 or KIRAN 1800-599-0019 (India, free, 24×7), or your local emergency number."));
       box.append(r);
@@ -512,7 +546,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
     }
   }
 
-  function renderAll(){ renderEntries(); renderAnalysis(); }
+  function renderAll(){ renderEntries(); renderAnalysis(); renderRecap(); renderNotices(); }
 
   // ---------- actions ----------
   function onSave(ev){
@@ -540,6 +574,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
     const blob = new Blob([JSON.stringify({app:"thoughtpattern", exportedAt:new Date().toISOString(), entries: entries.map(({readingState, ...e}) => e), analysis}, null, 2)], {type:"application/json"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `thoughtpattern-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    lsSet(LS_BACKUP, Date.now()); renderNotices();
   };
   $("#importFile").onchange = async ev => {
     const f = ev.target.files?.[0]; if (!f) return;
@@ -613,80 +648,165 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
   $("#promptNext").onclick = showPrompt;
   $("#promptClear").onclick = () => { activePrompt = ""; $("#promptLine").hidden = true; };
 
-  // ---------- voice recording → text ----------
-  const VOICE_ENABLED = false; // switch on once /api/transcribe is deployed
-  const MAX_REC_SECONDS = 8 * 60;
-  let rec = null; // {recorder, stream, chunks, started, timer, audioCtx, raf, cancelled}
-  const micSupported = VOICE_ENABLED && !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
-  function setHint(msg, isErr){ const hnt = $("#countHint"); hnt.textContent = msg; hnt.style.color = isErr ? "var(--crit)" : ""; if (msg) setTimeout(() => { if (hnt.textContent === msg){ hnt.style.color = ""; updateCount(); } }, 6000); }
-  function pickMime(){
-    for (const m of ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/aac","audio/ogg;codecs=opus"]) {
-      try { if (MediaRecorder.isTypeSupported(m)) return m; } catch {}
+
+  // ---------- first-run notice & backup reminder ----------
+  function renderNotices(){
+    $("#welcome").hidden = !!lsGet(LS_ACK);
+    const last = Number(lsGet(LS_BACKUP)) || 0, snooze = Number(lsGet(LS_SNOOZE)) || 0, t = Date.now();
+    const unsaved = entries.filter(e => e.createdAt > last).length;
+    const oldest = entries.length ? entries[entries.length - 1].createdAt : t;
+    const due = entries.length >= 3 && unsaved >= 3 && t > snooze && (last ? t - last > 14*day : t - oldest > 7*day);
+    $("#backupNudge").hidden = !due || !$("#welcome").hidden;
+    if (due) $("#backupNudgeText").textContent = last
+      ? `It's been ${Math.round((t - last)/day)} days since your last backup, and you've written ${unsaved} entries since. Your journal lives only on this device, so a backup keeps it safe.`
+      : `You have ${entries.length} entries and no backup yet. Your journal lives only on this device, so clearing browser data would erase it. A backup takes a few seconds.`;
+  }
+  $("#welcomeOk").onclick = () => { lsSet(LS_ACK, Date.now()); renderNotices(); };
+  $("#backupNow").onclick = () => $("#exportBtn").click();
+  $("#backupLater").onclick = () => { lsSet(LS_SNOOZE, Date.now() + 3*day); renderNotices(); };
+
+  // ---------- monthly recap (worked out on this device; no AI cost) ----------
+  const monthKey = t => { const d = new Date(t); return d.getFullYear() * 12 + d.getMonth(); };
+  const monthName = k => new Date(Math.floor(k/12), k % 12, 1).toLocaleDateString(undefined, {month:"long", year:"numeric"});
+  let recapMonth = null;
+  function tally(list){ const m = new Map(); list.forEach(x => { const k = String(x).trim(); if (!k) return; const key = k.toLowerCase(); const cur = m.get(key) || {label: k[0].toUpperCase() + k.slice(1), n: 0}; cur.n++; m.set(key, cur); }); return [...m.values()].sort((a,b) => b.n - a.n); }
+  function monthStats(list, k){
+    const inMonth = list.filter(e => monthKey(e.createdAt) === k);
+    const prev = list.filter(e => monthKey(e.createdAt) === k - 1);
+    const val = es => { const v = es.filter(e => typeof e.reading?.valence === "number").map(e => e.reading.valence); return v.length ? v.reduce((a,b)=>a+b,0) / v.length : null; };
+    const days = new Set(inMonth.map(e => new Date(e.createdAt).getDate()));
+    let streak = 0, run = 0; for (let d = 1; d <= 31; d++){ run = days.has(d) ? run + 1 : 0; streak = Math.max(streak, run); }
+    const byDay = [...days].sort((a,b)=>a-b).map(d => { const es = inMonth.filter(e => new Date(e.createdAt).getDate() === d); return {d, v: val(es)}; }).filter(x => x.v !== null);
+    const best = inMonth.filter(e => typeof e.reading?.valence === "number").sort((a,b) => b.reading.valence - a.reading.valence)[0];
+    return {
+      k, count: inMonth.length, days: days.size, streak,
+      words: inMonth.reduce((s,e) => s + e.text.split(/\s+/).filter(Boolean).length, 0),
+      avg: val(inMonth), prevAvg: val(prev),
+      traps: tally(inMonth.flatMap(e => arr(e.reading?.tags))).slice(0,3),
+      moods: tally(inMonth.flatMap(e => String(e.reading?.mood || "").split(/,|\band\b|\bthen\b|\//i))).slice(0,3),
+      byDay, best: best ? {date: best.createdAt, mood: best.reading.mood, v: best.reading.valence} : null
+    };
+  }
+  const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1);
+  function renderRecap(){
+    const box = $("#recap"); box.replaceChildren();
+    const list = showingExamples() ? EXAMPLE_ENTRIES : entries;
+    if (!list.length) return;
+    const keys = [...new Set(list.map(e => monthKey(e.createdAt)))].sort((a,b)=>a-b);
+    if (recapMonth === null || !keys.includes(recapMonth)) recapMonth = keys[keys.length - 1];
+    const st = monthStats(list, recapMonth), i = keys.indexOf(recapMonth);
+    const head = el("div","recap-head"); head.append(el("h3",null, showingExamples() ? "Your month (example)" : "Your month"));
+    const nav = el("div","month-nav");
+    const prevB = el("button",null,"‹"); prevB.type="button"; prevB.setAttribute("aria-label","Previous month"); prevB.disabled = i <= 0; prevB.onclick = () => { recapMonth = keys[i-1]; renderRecap(); };
+    const nextB = el("button",null,"›"); nextB.type="button"; nextB.setAttribute("aria-label","Next month"); nextB.disabled = i >= keys.length - 1; nextB.onclick = () => { recapMonth = keys[i+1]; renderRecap(); };
+    nav.append(prevB, el("span",null,monthName(recapMonth)), nextB); head.append(nav); box.append(head);
+    const stats = el("div","stats");
+    const stat = (v, k) => { const d = el("div","stat"); d.append(el("span","v",v), el("span","k",k)); stats.append(d); };
+    stat(String(st.days), st.days === 1 ? "day written" : "days written");
+    stat(st.avg === null ? "–" : signed(st.avg), "avg mood (−5 to +5)");
+    stat(st.avg === null || st.prevAvg === null ? "–" : signed(st.avg - st.prevAvg), "vs last month");
+    box.append(stats);
+    if (st.byDay.length >= 2){
+      const W = 300, H = 44, pad = 5, x = j => pad + j * (W - 2*pad) / (st.byDay.length - 1), y = v => H/2 - (v/5) * (H/2 - pad);
+      const d = st.byDay.map((p,j) => `${j?"L":"M"}${x(j).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+      const svg = document.createElementNS("http://www.w3.org/2000/svg","svg"); svg.setAttribute("class","spark"); svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.setAttribute("preserveAspectRatio","none"); svg.setAttribute("aria-label","Daily mood this month");
+      svg.innerHTML = `<line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" stroke="var(--line)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+      box.append(svg);
     }
-    return "";
+    const row = el("div","row2");
+    const col = (title, items) => { const c = el("div"); c.append(el("div","label",title)); if (items.length){ const cs = el("div","chips"); cs.style.marginTop = "6px"; items.forEach(t => cs.append(el("span","chip" + (title.includes("trap") ? " rose" : ""), `${t.label} · ${t.n}`))); c.append(cs); } else c.append(el("div","small","Nothing yet")); row.append(c); };
+    col("Most common thinking traps", st.traps); col("Feelings that came up most", st.moods);
+    box.append(row);
+    const foot = el("div","small");
+    foot.textContent = `${st.count} entr${st.count===1?"y":"ies"} · ${st.words} words` + (st.streak > 1 ? ` · longest streak ${st.streak} days` : "") + (st.best && st.best.v > 0 ? ` · best day ${new Date(st.best.date).toLocaleDateString(undefined,{day:"numeric",month:"short"})} (${st.best.mood})` : "");
+    box.append(foot);
+    if (!showingExamples() && st.count){ const r = el("div","share-row"); const b = el("button",null,"Share my month"); b.type="button"; b.onclick = () => openShare("month"); r.append(b); box.append(r); }
   }
-  function fmtTime(s){ return Math.floor(s/60) + ":" + String(Math.floor(s%60)).padStart(2,"0"); }
-  function stopMeter(){ if (rec?.raf) cancelAnimationFrame(rec.raf); try { rec?.audioCtx?.close(); } catch {} }
-  function releaseMic(){ stopMeter(); clearInterval(rec?.timer); rec?.stream?.getTracks().forEach(t => t.stop()); }
-  function resetRecorderUI(){
-    $("#recorder").hidden = true; $("#recStatus").hidden = true; $("#recStop").hidden = false; $("#recCancel").hidden = false;
-    $("#recDot").hidden = false; $("#recLevel").style.width = "0"; $("#micBtn").disabled = false; $("#recTime").textContent = "0:00";
+
+  // ---------- share cards (drawn on this device; never include entry text) ----------
+  const CARD = {w:1080, h:1920, bg:"#23405A", ink:"#F4F1EA", soft:"#B9C9D6", rose:"#E6A9B6", line:"rgba(244,241,234,.18)"};
+  let shareKind = "pattern", shareOpts = {}, shareBlob = null;
+  function wrap(ctx, text, maxW){ const words = String(text).split(/\s+/); const lines = []; let cur = ""; for (const w of words){ const t = cur ? cur + " " + w : w; if (ctx.measureText(t).width > maxW && cur){ lines.push(cur); cur = w; } else cur = t; } if (cur) lines.push(cur); return lines; }
+  function para(ctx, text, x, y, maxW, font, lh, color, maxLines = 6){
+    ctx.font = font; ctx.fillStyle = color; let lines = wrap(ctx, text, maxW);
+    if (lines.length > maxLines){ lines = lines.slice(0, maxLines); lines[maxLines-1] = lines[maxLines-1].replace(/\s*\S*$/, "…"); }
+    lines.forEach((l,i) => ctx.fillText(l, x, y + i*lh)); return y + lines.length*lh;
   }
-  async function startRecording(){
-    if (!micSupported){ setHint("Voice recording isn't supported in this browser. Try Chrome or Safari.", true); return; }
-    let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-    catch(e){
-      setHint(e?.name === "NotAllowedError" ? "Microphone access is blocked. Allow the microphone for this site in your browser settings, then try again." : "Couldn't start the microphone. Check that no other app is using it.", true);
-      return;
+  function label(ctx, text, x, y){ ctx.font = '500 28px "IBM Plex Mono", monospace'; ctx.fillStyle = CARD.rose; try { ctx.letterSpacing = "3px"; } catch {} ctx.fillText(text.toUpperCase(), x, y); try { ctx.letterSpacing = "0px"; } catch {} return y + 58; }
+  async function drawCard(){
+    try { await Promise.all(['500 80px "Newsreader"','italic 400 80px "Newsreader"','400 40px "IBM Plex Sans"','500 30px "IBM Plex Mono"'].map(f => document.fonts.load(f))); } catch {}
+    const c = document.createElement("canvas"); c.width = CARD.w; c.height = CARD.h; const ctx = c.getContext("2d");
+    ctx.fillStyle = CARD.bg; ctx.fillRect(0,0,CARD.w,CARD.h);
+    ctx.fillStyle = "rgba(230,169,182,.10)"; ctx.beginPath(); ctx.arc(CARD.w - 60, 260, 360, 0, Math.PI*2); ctx.fill();
+    const X = 96, W = CARD.w - 2*X;
+    ctx.font = '500 56px "Newsreader", Georgia, serif'; ctx.fillStyle = CARD.ink; ctx.fillText("Thought", X, 190);
+    const tw = ctx.measureText("Thought").width; ctx.font = 'italic 400 56px "Newsreader", Georgia, serif'; ctx.fillStyle = CARD.rose; ctx.fillText("Pattern", X + tw, 190);
+    const main = ctx, layer = document.createElement("canvas"); layer.width = CARD.w; layer.height = 2400;
+    { const ctx = layer.getContext("2d"); let y = 60;
+    if (shareKind === "pattern"){
+      const d = analysis.data, top = arr(d.patterns)[0];
+      y = label(ctx, "My pattern right now", X, y);
+      y = para(ctx, top?.title || arr(d.summary?.points)[0] || "", X, y + 30, W, '500 84px "Newsreader", Georgia, serif', 100, CARD.ink, 4) + 40;
+      if (shareOpts.desc && top?.description) y = para(ctx, top.description, X, y, W, '400 40px "IBM Plex Sans", sans-serif', 58, CARD.soft, 5) + 40;
+      const sec = (title, text) => { if (!text) return; ctx.fillStyle = CARD.line; ctx.fillRect(X, y, W, 2); y += 90; y = label(ctx, title, X, y); y = para(ctx, text, X, y + 10, W, 'italic 400 50px "Newsreader", Georgia, serif', 66, CARD.ink, 4) + 50; };
+      if (shareOpts.strength) sec("A strength I'm growing", arr(d.strengths)[0]);
+      if (shareOpts.focus) sec("This week I'm trying", d.summary?.focus || arr(d.exercises)[0]?.name);
+    } else {
+      const st = monthStats(entries, recapMonth);
+      y = label(ctx, "My month in reflection", X, y);
+      y = para(ctx, monthName(st.k), X, y + 30, W, '500 96px "Newsreader", Georgia, serif', 110, CARD.ink, 2) + 60;
+      const big = (v, k, x) => { ctx.font = '500 120px "Newsreader", Georgia, serif'; ctx.fillStyle = CARD.ink; ctx.fillText(v, x, y + 100); ctx.font = '400 34px "IBM Plex Sans", sans-serif'; ctx.fillStyle = CARD.soft; ctx.fillText(k, x, y + 160); };
+      big(String(st.days), st.days === 1 ? "day written" : "days written", X);
+      if (shareOpts.mood && st.avg !== null) big(signed(st.avg), "average mood", X + W/2);
+      y += 240;
+      if (shareOpts.mood && st.byDay.length >= 2){
+        const H = 180, y0 = y + H/2, xs = j => X + j * W / (st.byDay.length - 1), ys = v => y0 - (v/5) * (H/2);
+        ctx.strokeStyle = CARD.line; ctx.lineWidth = 2; ctx.setLineDash([10,10]); ctx.beginPath(); ctx.moveTo(X, y0); ctx.lineTo(X+W, y0); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = CARD.rose; ctx.lineWidth = 7; ctx.lineJoin = "round"; ctx.beginPath(); st.byDay.forEach((p,j) => j ? ctx.lineTo(xs(j), ys(p.v)) : ctx.moveTo(xs(j), ys(p.v))); ctx.stroke();
+        y += H + 70;
+      }
+      const list = (title, items) => { if (!items.length) return; ctx.fillStyle = CARD.line; ctx.fillRect(X, y, W, 2); y += 90; y = label(ctx, title, X, y); y = para(ctx, items.map(t => t.label).join("  ·  "), X, y + 10, W, 'italic 400 52px "Newsreader", Georgia, serif', 66, CARD.ink, 3) + 40; };
+      if (shareOpts.traps) list("Thinking traps I caught", st.traps);
+      if (shareOpts.feelings) list("What I felt most", st.moods);
     }
-    const mimeType = pickMime();
-    let recorder;
-    try { recorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 32000 } : undefined); }
-    catch { recorder = new MediaRecorder(stream); }
-    rec = { recorder, stream, chunks: [], started: Date.now(), cancelled: false };
-    recorder.ondataavailable = e => { if (e.data && e.data.size) rec.chunks.push(e.data); };
-    recorder.onstop = onRecordingStopped;
-    recorder.start(1000);
-    $("#recorder").hidden = false; $("#micBtn").disabled = true;
-    rec.timer = setInterval(() => {
-      const s = (Date.now() - rec.started) / 1000;
-      $("#recTime").textContent = fmtTime(s);
-      if (s >= MAX_REC_SECONDS) stopRecording();
-    }, 250);
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      rec.audioCtx = new AC(); const src = rec.audioCtx.createMediaStreamSource(stream);
-      const an = rec.audioCtx.createAnalyser(); an.fftSize = 512; src.connect(an);
-      const data = new Uint8Array(an.fftSize);
-      const tick = () => { an.getByteTimeDomainData(data); let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128)); $("#recLevel").style.width = Math.min(100, peak / 64 * 100) + "%"; rec.raf = requestAnimationFrame(tick); };
-      tick();
-    } catch {}
+    // centre the content block between the wordmark and the footer
+    const top = 280, bottom = CARD.h - 240, hgt = Math.min(y, bottom - top);
+    main.drawImage(layer, 0, 0, CARD.w, hgt, 0, top + Math.max(0, (bottom - top - hgt) / 2) - 60, CARD.w, hgt);
+    }
+    ctx.font = '400 32px "IBM Plex Sans", sans-serif'; ctx.fillStyle = CARD.soft;
+    ctx.fillText("Find your own patterns", X, CARD.h - 150);
+    ctx.font = '500 36px "IBM Plex Mono", monospace'; ctx.fillStyle = CARD.ink; ctx.fillText(location.host || "thoughtpattern.netlify.app", X, CARD.h - 96);
+    return new Promise(res => c.toBlob(res, "image/png"));
   }
-  function stopRecording(){ if (rec?.recorder?.state === "recording"){ rec.recorder.stop(); } }
-  function cancelRecording(){ if (!rec) return; rec.cancelled = true; stopRecording(); }
-  async function onRecordingStopped(){
-    const r = rec; releaseMic();
-    if (r.cancelled){ rec = null; resetRecorderUI(); return; }
-    const type = (r.recorder.mimeType || r.chunks[0]?.type || "audio/webm");
-    const blob = new Blob(r.chunks, { type });
-    if (blob.size < 1200){ rec = null; resetRecorderUI(); setHint("That recording was too short. Hold on a little longer.", true); return; }
-    $("#recDot").hidden = true; $("#recStop").hidden = true; $("#recCancel").hidden = true; $("#recStatus").hidden = false; $("#recLevel").style.width = "0";
+  async function refreshCard(){
+    $("#shareMsg").textContent = "";
+    shareBlob = await drawCard();
+    const img = $("#shareImg"); if (img.src) URL.revokeObjectURL(img.src); img.src = URL.createObjectURL(shareBlob);
+  }
+  function openShare(kind){
+    shareKind = kind;
+    const opts = kind === "pattern"
+      ? [["desc","Pattern description",false],["strength","A strength",true],["focus","This week's focus",true]]
+      : [["mood","Mood",true],["traps","Thinking traps",true],["feelings","Feelings",true]];
+    shareOpts = Object.fromEntries(opts.map(o => [o[0], o[2]]));
+    const box = $("#shareOpts"); box.replaceChildren();
+    opts.forEach(([k, text]) => { const l = el("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = shareOpts[k]; cb.onchange = () => { shareOpts[k] = cb.checked; refreshCard(); }; l.append(cb, document.createTextNode(text)); box.append(l); });
+    $("#shareTitle").textContent = kind === "pattern" ? "Share my pattern" : "Share my month";
+    $("#shareDlg").showModal(); refreshCard();
+  }
+  const shareName = () => `thoughtpattern-${shareKind}.png`;
+  $("#shareGo").onclick = async () => {
+    if (!shareBlob) return;
+    const file = new File([shareBlob], shareName(), {type:"image/png"});
+    const text = `Found this about myself on ThoughtPattern. Try it: ${location.origin}`;
     try{
-      const res = await fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": type.split(";")[0] }, body: blob });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || !body?.text) throw new Error(body?.error || "Couldn't turn that recording into text. Please try again.");
-      insertText(body.text);
-      setHint("Voice note added. Edit it if anything looks off, then save.");
-    }catch(e){
-      setHint(navigator.onLine === false ? "You're offline. Connect to the internet to transcribe voice notes." : (e.message || "Transcription failed."), true);
-    }finally{ rec = null; resetRecorderUI(); }
-  }
-  $("#micBtn").onclick = startRecording;
-  $("#recStop").onclick = stopRecording;
-  $("#recCancel").onclick = cancelRecording;
-  if (!VOICE_ENABLED) $("#micBtn").hidden = true;
-  else if (!micSupported) $("#micBtn").title = "Voice recording isn't supported in this browser";
+      if (navigator.canShare?.({files:[file]})){ await navigator.share({files:[file], text}); return; }
+      $("#shareMsg").textContent = "Sharing images isn't supported in this browser, so I've saved the image instead."; $("#shareSave").click();
+    }catch(e){ if (e?.name !== "AbortError") $("#shareMsg").textContent = "Couldn't open the share menu. Use Save image instead."; }
+  };
+  $("#shareSave").onclick = () => { if (!shareBlob) return; const a = document.createElement("a"); a.href = URL.createObjectURL(shareBlob); a.download = shareName(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+  $("#shareClose").onclick = () => $("#shareDlg").close();
+  $("#shareDlg").addEventListener("click", e => { if (e.target === $("#shareDlg")) $("#shareDlg").close(); });
 
   $("#composer").addEventListener("submit", onSave);
   $("#entryText").addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") onSave(e); });
