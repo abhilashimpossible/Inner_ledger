@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="ThoughtPattern">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>ThoughtPattern</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -73,6 +74,11 @@ a{color:var(--accent)}
 header.top{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:4px 0 2px}
 h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,4.6vw,46px);line-height:1;margin:0;letter-spacing:-.015em}
 h1 em{font-style:italic;color:var(--accent)}
+h1:has(.logo-mark){display:flex;align-items:center;gap:.3em}
+.logo-mark{height:.74em;width:auto;flex-shrink:0;color:var(--ink)}
+.logo-dot{fill:#B8532E}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-dot{fill:#E58A5F}}
+:root[data-theme="dark"] .logo-dot{fill:#E58A5F}
 header.top h1{padding-right:130px}
 .sub{color:var(--muted);margin:4px 0 0;max-width:52ch;font-size:15.5px}
 .fine{font-size:12px;color:var(--muted);margin:2px 0 0;opacity:.9}
@@ -292,7 +298,7 @@ dialog#shareDlg::backdrop{background:rgba(10,12,16,.5);-webkit-backdrop-filter:b
 <body>
 <div class="intro" id="welcome" role="dialog" aria-modal="true" aria-labelledby="introTitle" hidden>
   <div class="intro-in">
-    <h1 id="introTitle">Thought<em>Pattern</em></h1>
+    <h1 id="introTitle"><svg class="logo-mark" viewBox="20 22 64 56" aria-hidden="true"><path d="M24 28H78M24 39H66M24 50H58M24 61H66M24 72H78" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><circle cx="72" cy="50" r="5.5" class="logo-dot"/></svg><span>Thought<em>Pattern</em></span></h1>
     <p class="intro-tag">Write freely. See the patterns in how you think and feel.</p>
     <ul class="intro-pts">
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><div><b>Private</b><span>Entries stay on your phone. If you sign in to sync, they're encrypted before they leave it. Your words go to an AI only to create readings.</span></div></li>
@@ -305,7 +311,7 @@ dialog#shareDlg::backdrop{background:rgba(10,12,16,.5);-webkit-backdrop-filter:b
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>Thought<em>Pattern</em></h1>
+      <h1><svg class="logo-mark" viewBox="20 22 64 56" aria-hidden="true"><path d="M24 28H78M24 39H66M24 50H58M24 61H66M24 72H78" fill="none" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><circle cx="72" cy="50" r="5.5" class="logo-dot"/></svg><span>Thought<em>Pattern</em></span></h1>
       <p class="sub">Write freely. AI reflects back the patterns in how you think and feel.</p>
       <p class="fine">Private · Not therapy or medical advice · 18+ · <a href="privacy.html">Privacy</a></p>
     </div>
