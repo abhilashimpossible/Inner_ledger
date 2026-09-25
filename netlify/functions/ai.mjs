@@ -153,6 +153,9 @@ export default async (req) => {
     return json(400, { error: "Unknown request." });
   }
 
+  // OpenAI requires the word "json" in the input itself (not just the instructions) for JSON mode.
+  input += "\n\nReply with the JSON object described in your instructions.";
+
   try{
     const eff = effort === "none" ? "" : effort;
     const res = await startJob(model, instructions, input, key, eff, deadline);
