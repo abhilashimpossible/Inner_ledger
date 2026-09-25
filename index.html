@@ -329,21 +329,34 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
     }
     return body || {};
   }
+  let backgroundUnavailable = false; // set if OpenAI can't find background jobs on this account
   async function callAI(payload, signal){
     const limit = payload.kind === "deep" ? 600000 : 180000; // up to 10 min for the full analysis
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), limit);
     const onAbort = () => ctl.abort(); signal?.addEventListener("abort", onAbort);
     let id = null;
     try{
-      const start = await aiFetch("/api/ai", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }, ctl.signal);
+      const post = extra => aiFetch("/api/ai", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({...payload, ...extra}) }, ctl.signal);
+      if (backgroundUnavailable) return (await post({direct:true})).data;
+      const start = await post({});
       if (start.data) return start.data;
       id = start.id;
       if (!id) throw {message:"The AI service returned an unexpected reply. Please try again."};
+      let missing = 0;
       for (let i = 0; ; i++){
         await sleep(i < 5 ? 2000 : 4000, ctl.signal);
         const r = await aiFetch("/api/ai?id=" + encodeURIComponent(id), { method:"GET" }, ctl.signal);
         if (r.data){ id = null; return r.data; }
         if (!r.pending){ id = null; throw {message:"The AI service returned an unexpected reply. Please try again."}; }
+        // OpenAI can't find the job: this account probably doesn't keep responses. Ask directly instead.
+        missing = r.notFound ? missing + 1 : 0;
+        if (missing >= 4){
+          backgroundUnavailable = true;
+          fetch("/api/ai?id=" + encodeURIComponent(id), { method:"DELETE", keepalive:true }).catch(() => {}); id = null;
+          const d = await post({direct:true});
+          if (d.data) return d.data;
+          throw {message:"The AI service returned an unexpected reply. Please try again."};
+        }
       }
     }catch(e){
       if (e?.message) throw e;

@@ -93,6 +93,23 @@ const errorFor = (res) => {
   return json(502, { error: `The AI service returned an error (${res.r.status}${why ? ": " + why : ""}).` });
 };
 
+// Ask OpenAI directly and wait for the answer (must finish inside Netlify's 60s limit, so use low effort).
+async function direct(model, instructions, input, key, eff, bgWhy = ""){
+  const base = { model, instructions, input, text: { format: { type: "json_object" } }, store: false };
+  let d = await call("POST", "/responses", key, eff !== undefined ? { ...base, reasoning: { effort: "low" } } : base, Date.now() + 50000);
+  if (!d.timeout && d.r.status === 400 && /reasoning|effort/i.test(d.b?.error?.message || ""))
+    d = await call("POST", "/responses", key, base, Date.now() + 45000);
+  if (d.timeout) return json(504, { error: "The AI took too long to answer. Please try again." });
+  if (!d.r.ok){
+    const r = errorFor(d); const b = await r.json();
+    return json(r.status, { error: b.error + (bgWhy ? ` [background: ${bgWhy}]` : "") });
+  }
+  if (d.b?.status === "incomplete") return json(502, { error: "The reply was cut short. Please try again." });
+  const data = parseJSON(outputText(d.b));
+  if (!data || typeof data !== "object" || Array.isArray(data)) return json(502, { error: "The reply came back in an unexpected format. Please try again." });
+  return json(200, { data });
+}
+
 export default async (req) => {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return json(500, { error: "The app isn't set up yet: OPENAI_API_KEY is missing on the server." });
@@ -109,6 +126,9 @@ export default async (req) => {
     }
     try{
       const res = await call("GET", `/responses/${id}`, key, null, Date.now() + 20000);
+      // Not found: either OpenAI hasn't registered it yet, or this account doesn't keep responses.
+      // The app keeps checking briefly, then switches to a direct request.
+      if (!res.timeout && res.r.status === 404) return json(200, { pending: true, notFound: true });
       if (res.timeout || !res.r.ok) return errorFor(res);
       const body = res.b; const status = body?.status;
       if (status === "queued" || status === "in_progress") return json(200, { pending: true });
@@ -159,24 +179,12 @@ export default async (req) => {
 
   try{
     const eff = effort === "none" ? "" : effort;
+    if (payload.direct === true) return await direct(model, instructions, input, key, eff);
     const res = await startJob(model, instructions, input, key, eff, deadline);
     if (!res.timeout && !res.r.ok && ![401, 429].includes(res.r.status)){
-      // Background mode refused (model/account/project doesn't allow it): answer directly instead, within Netlify's limit.
+      // Background mode refused (model/account/project doesn't allow it): answer directly instead.
       console.error("Background start failed, trying direct:", res.r.status, res.b?.error?.message);
-      const base = { model, instructions, input, text: { format: { type: "json_object" } }, store: false };
-      let d = await call("POST", "/responses", key, eff ? { ...base, reasoning: { effort: "low" } } : base, Date.now() + 50000);
-      if (!d.timeout && d.r.status === 400 && /reasoning|effort/i.test(d.b?.error?.message || ""))
-        d = await call("POST", "/responses", key, base, Date.now() + 45000);
-      if (d.timeout) return json(504, { error: "The AI took too long to answer. Please try again." });
-      if (!d.r.ok){
-        const bgWhy = String(res.b?.error?.message || "").slice(0, 200);
-        const r = errorFor(d); const b = await r.json();
-        return json(r.status, { error: b.error + (bgWhy ? ` [background: ${bgWhy}]` : "") });
-      }
-      if (d.b?.status === "incomplete") return json(502, { error: "The reply was cut short. Please try again." });
-      const data = parseJSON(outputText(d.b));
-      if (!data || typeof data !== "object" || Array.isArray(data)) return json(502, { error: "The reply came back in an unexpected format. Please try again." });
-      return json(200, { data });
+      return direct(model, instructions, input, key, eff, String(res.b?.error?.message || "").slice(0, 200));
     }
     if (res.timeout || !res.r.ok) return errorFor(res);
     const id = res.b?.id;
