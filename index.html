@@ -324,6 +324,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
       if (body?.error) throw {message: body.error};
       if (res.status === 404) throw {message:"The AI service isn't set up on this site yet (the server function is missing). The site needs to be deployed from GitHub, not by drag-and-drop."};
       if (res.status === 401 || res.status === 403) throw {message:"This site is private, so the AI service is blocked. Make the site public in Netlify, then try again."};
+      if (res.status === 504) throw {message:"The AI took too long to answer (the server allows about a minute). Please try again."};
       throw {message:`The AI service returned an unexpected error (${res.status}). Please try again.`};
     }
     return body.data;
