@@ -130,6 +130,31 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .spark{width:100%;height:60px;display:block}
 .err{color:var(--crit);font-size:14px}
 
+
+/* voice + templates */
+.composer-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.grid > *{min-width:0}
+.composer{min-width:0}
+#promptBtn,#promptNext{color:var(--accent);font-weight:500}
+#promptBtn:hover,#promptNext:hover{color:var(--accent);text-decoration:underline}
+.templates{max-width:100%;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.templates::-webkit-scrollbar{display:none}
+.tpl{flex:0 0 auto;font-size:13px;padding:5px 11px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);white-space:nowrap}
+.tpl:hover{border-color:var(--accent)}
+.prompt-line{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-family:var(--serif);font-size:17px;line-height:1.45}
+.prompt-line .q-text{flex:1}
+.prompt-line .ctl{display:flex;gap:2px;flex-shrink:0}
+.left-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.mic{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 14px}
+.mic svg{width:16px;height:16px}
+.recorder{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--rose-soft);border:1px solid var(--rose);border-radius:10px;padding:10px 12px}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--crit);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.rec-dot{animation:none}}
+.rec-time{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;min-width:3.2em}
+.rec-level{flex:1;min-width:60px;height:6px;border-radius:3px;background:var(--surface);overflow:hidden}
+.rec-level i{display:block;height:100%;width:0;background:var(--rose);transition:width .08s linear}
+.rec-status{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
 /* standalone additions */
 .settings{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .settings .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -171,10 +196,32 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
   <div class="grid">
     <div>
       <form class="composer" id="composer">
-        <label class="label" for="entryText">New entry</label>
-        <textarea id="entryText" placeholder="What happened today, and how did it feel? Write freely: thoughts, worries, a conversation that stuck with you…"></textarea>
+        <div class="composer-top">
+          <label class="label" for="entryText">New entry</label>
+          <button type="button" class="ghost" id="promptBtn">Give me a prompt</button>
+        </div>
+        <div class="templates" id="templates" role="group" aria-label="Start from a template"></div>
+        <div class="prompt-line" id="promptLine" hidden>
+          <span class="q-text" id="promptText"></span>
+          <span class="ctl">
+            <button type="button" class="ghost" id="promptNext" aria-label="Another prompt">Another</button>
+            <button type="button" class="ghost" id="promptClear" aria-label="Remove prompt">✕</button>
+          </span>
+        </div>
+        <textarea id="entryText" placeholder="What happened today, and how did it feel? Write freely, or pick a template or prompt above."></textarea>
+        <div class="recorder" id="recorder" hidden>
+          <span class="rec-dot" id="recDot"></span>
+          <span class="rec-time" id="recTime">0:00</span>
+          <span class="rec-level" aria-hidden="true"><i id="recLevel"></i></span>
+          <span class="rec-status" id="recStatus" hidden><span class="spin"></span><span>Turning your voice into text…</span></span>
+          <button type="button" class="primary" id="recStop">Stop &amp; transcribe</button>
+          <button type="button" class="ghost" id="recCancel">Cancel</button>
+        </div>
         <div class="row">
-          <span class="hint" id="countHint"></span>
+          <div class="left-tools">
+            <button type="button" class="mic" id="micBtn" aria-label="Record your voice" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg><span>Record</span></button>
+            <span class="hint" id="countHint"></span>
+          </div>
           <button type="submit" class="primary" id="saveBtn">Save entry</button>
         </div>
       </form>
@@ -418,8 +465,10 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
   // ---------- actions ----------
   function onSave(ev){
     ev?.preventDefault();
-    const ta = $("#entryText"); const text = ta.value.trim();
+    const ta = $("#entryText"); let text = ta.value.trim();
     if (!text) return;
+    if (activePrompt && !text.includes(activePrompt)) text = `Prompt: ${activePrompt}\n\n${text}`;
+    activePrompt = ""; $("#promptLine").hidden = true;
     const entry = {id: "e" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), text, createdAt: Date.now()};
     entries.unshift(entry); ta.value = ""; updateCount();
     try { localStorage.removeItem(LS_DRAFT); } catch {}
@@ -452,6 +501,140 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
     }catch{ $("#settingsMsg").textContent = "That file isn't an Inner Ledger backup."; }
     ev.target.value = "";
   };
+
+
+  // ---------- templates & prompts ----------
+  const TEMPLATES = [
+    {label:"Something upset me", text:"What happened:\n\nWhat went through my mind:\n\nWhat I felt (and how strongly, 0–10):\n\nWhat I did next:\n\nWhat I'd say to a friend in my place:\n"},
+    {label:"Today in brief", text:"Today I:\n\nThe moment that stayed with me:\n\nRight now I feel:\n"},
+    {label:"A conversation", text:"Who I talked with:\n\nWhat was said:\n\nWhat I wanted to say but didn't:\n\nHow I felt afterwards:\n"},
+    {label:"A worry", text:"What I'm worried about:\n\nThe worst I imagine happening:\n\nHow likely that really is:\n\nWhat is within my control:\n"},
+    {label:"Someone on my mind", text:"Who:\n\nWhat's going on between us:\n\nWhat I need from them:\n\nWhat I'm afraid of here:\n"},
+    {label:"A good moment", text:"Something that went well:\n\nWhat I did that helped:\n\nSomething I'm grateful for:\n"}
+  ];
+  const PROMPTS = [
+    "What has been taking up the most space in your head this week?",
+    "When did you last feel truly at ease? What was different?",
+    "What are you avoiding right now, and what might happen if you faced it?",
+    "Describe a moment today when your mood shifted. What triggered it?",
+    "What would you do differently if nobody was judging you?",
+    "Which relationship feels heaviest right now, and why?",
+    "What did you need today that you didn't get?",
+    "What criticism, from yourself or others, is still echoing?",
+    "When did you feel most like yourself recently?",
+    "What are you pretending not to care about?",
+    "What feeling keeps coming back, and when does it usually show up?",
+    "If your younger self saw your life now, what would they notice first?",
+    "What is one thing you keep telling yourself you 'should' do?",
+    "What drained your energy today, and what gave you some back?",
+    "What would you like someone to understand about you right now?"
+  ];
+  let activePrompt = "", promptIdx = -1;
+  function insertText(t, {caretAfterFirstColon=false} = {}){
+    const ta = $("#entryText");
+    const cur = ta.value;
+    let start, next;
+    if (!cur.trim()){ next = t; start = 0; }
+    else {
+      const s = ta.selectionStart ?? cur.length, e = ta.selectionEnd ?? cur.length;
+      const before = cur.slice(0, s), after = cur.slice(e);
+      const sep = before && !/\s$/.test(before) ? (caretAfterFirstColon ? "\n\n" : " ") : "";
+      next = before + sep + t + after; start = before.length + sep.length;
+    }
+    ta.value = next;
+    let caret = start + t.length;
+    if (caretAfterFirstColon){ const i = t.indexOf(":\n"); if (i >= 0) caret = start + i + 2; }
+    ta.focus(); try { ta.setSelectionRange(caret, caret); } catch {}
+    ta.dispatchEvent(new Event("input"));
+  }
+  TEMPLATES.forEach(tp => {
+    const b = el("button","tpl",tp.label); b.type = "button";
+    b.onclick = () => insertText(tp.text, {caretAfterFirstColon:true});
+    $("#templates").append(b);
+  });
+  function showPrompt(){
+    promptIdx = (promptIdx + 1 + Math.floor(Math.random() * (PROMPTS.length - 1))) % PROMPTS.length;
+    activePrompt = PROMPTS[promptIdx];
+    $("#promptText").textContent = activePrompt; $("#promptLine").hidden = false; $("#entryText").focus();
+  }
+  $("#promptBtn").onclick = showPrompt;
+  $("#promptNext").onclick = showPrompt;
+  $("#promptClear").onclick = () => { activePrompt = ""; $("#promptLine").hidden = true; };
+
+  // ---------- voice recording → text ----------
+  const VOICE_ENABLED = false; // switch on once /api/transcribe is deployed
+  const MAX_REC_SECONDS = 8 * 60;
+  let rec = null; // {recorder, stream, chunks, started, timer, audioCtx, raf, cancelled}
+  const micSupported = VOICE_ENABLED && !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+  function setHint(msg, isErr){ const hnt = $("#countHint"); hnt.textContent = msg; hnt.style.color = isErr ? "var(--crit)" : ""; if (msg) setTimeout(() => { if (hnt.textContent === msg){ hnt.style.color = ""; updateCount(); } }, 6000); }
+  function pickMime(){
+    for (const m of ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/aac","audio/ogg;codecs=opus"]) {
+      try { if (MediaRecorder.isTypeSupported(m)) return m; } catch {}
+    }
+    return "";
+  }
+  function fmtTime(s){ return Math.floor(s/60) + ":" + String(Math.floor(s%60)).padStart(2,"0"); }
+  function stopMeter(){ if (rec?.raf) cancelAnimationFrame(rec.raf); try { rec?.audioCtx?.close(); } catch {} }
+  function releaseMic(){ stopMeter(); clearInterval(rec?.timer); rec?.stream?.getTracks().forEach(t => t.stop()); }
+  function resetRecorderUI(){
+    $("#recorder").hidden = true; $("#recStatus").hidden = true; $("#recStop").hidden = false; $("#recCancel").hidden = false;
+    $("#recDot").hidden = false; $("#recLevel").style.width = "0"; $("#micBtn").disabled = false; $("#recTime").textContent = "0:00";
+  }
+  async function startRecording(){
+    if (!micSupported){ setHint("Voice recording isn't supported in this browser. Try Chrome or Safari.", true); return; }
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+    catch(e){
+      setHint(e?.name === "NotAllowedError" ? "Microphone access is blocked. Allow the microphone for this site in your browser settings, then try again." : "Couldn't start the microphone. Check that no other app is using it.", true);
+      return;
+    }
+    const mimeType = pickMime();
+    let recorder;
+    try { recorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 32000 } : undefined); }
+    catch { recorder = new MediaRecorder(stream); }
+    rec = { recorder, stream, chunks: [], started: Date.now(), cancelled: false };
+    recorder.ondataavailable = e => { if (e.data && e.data.size) rec.chunks.push(e.data); };
+    recorder.onstop = onRecordingStopped;
+    recorder.start(1000);
+    $("#recorder").hidden = false; $("#micBtn").disabled = true;
+    rec.timer = setInterval(() => {
+      const s = (Date.now() - rec.started) / 1000;
+      $("#recTime").textContent = fmtTime(s);
+      if (s >= MAX_REC_SECONDS) stopRecording();
+    }, 250);
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      rec.audioCtx = new AC(); const src = rec.audioCtx.createMediaStreamSource(stream);
+      const an = rec.audioCtx.createAnalyser(); an.fftSize = 512; src.connect(an);
+      const data = new Uint8Array(an.fftSize);
+      const tick = () => { an.getByteTimeDomainData(data); let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128)); $("#recLevel").style.width = Math.min(100, peak / 64 * 100) + "%"; rec.raf = requestAnimationFrame(tick); };
+      tick();
+    } catch {}
+  }
+  function stopRecording(){ if (rec?.recorder?.state === "recording"){ rec.recorder.stop(); } }
+  function cancelRecording(){ if (!rec) return; rec.cancelled = true; stopRecording(); }
+  async function onRecordingStopped(){
+    const r = rec; releaseMic();
+    if (r.cancelled){ rec = null; resetRecorderUI(); return; }
+    const type = (r.recorder.mimeType || r.chunks[0]?.type || "audio/webm");
+    const blob = new Blob(r.chunks, { type });
+    if (blob.size < 1200){ rec = null; resetRecorderUI(); setHint("That recording was too short. Hold on a little longer.", true); return; }
+    $("#recDot").hidden = true; $("#recStop").hidden = true; $("#recCancel").hidden = true; $("#recStatus").hidden = false; $("#recLevel").style.width = "0";
+    try{
+      const res = await fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": type.split(";")[0] }, body: blob });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.text) throw new Error(body?.error || "Couldn't turn that recording into text. Please try again.");
+      insertText(body.text);
+      setHint("Voice note added. Edit it if anything looks off, then save.");
+    }catch(e){
+      setHint(navigator.onLine === false ? "You're offline. Connect to the internet to transcribe voice notes." : (e.message || "Transcription failed."), true);
+    }finally{ rec = null; resetRecorderUI(); }
+  }
+  $("#micBtn").onclick = startRecording;
+  $("#recStop").onclick = stopRecording;
+  $("#recCancel").onclick = cancelRecording;
+  if (!VOICE_ENABLED) $("#micBtn").hidden = true;
+  else if (!micSupported) $("#micBtn").title = "Voice recording isn't supported in this browser";
 
   $("#composer").addEventListener("submit", onSave);
   $("#entryText").addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") onSave(e); });
