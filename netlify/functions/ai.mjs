@@ -87,7 +87,9 @@ const errorFor = (res) => {
   if (res.timeout) return json(504, { error: "The AI service didn't respond in time. Please try again." });
   console.error("OpenAI error", res.r.status, res.b?.error?.message);
   if (res.r.status === 429) return json(503, { error: "The AI is busy or the app's AI budget is used up. Please try again later." });
-  return json(502, { error: "The AI service returned an error. Please try again in a moment." });
+  // Include OpenAI's own reason (it never contains the key or journal text) so problems can be diagnosed.
+  const why = String(res.b?.error?.message || "").slice(0, 300);
+  return json(502, { error: `The AI service returned an error (${res.r.status}${why ? ": " + why : ""}).` });
 };
 
 export default async (req) => {
@@ -152,7 +154,26 @@ export default async (req) => {
   }
 
   try{
-    const res = await startJob(model, instructions, input, key, effort === "none" ? "" : effort, deadline);
+    const eff = effort === "none" ? "" : effort;
+    const res = await startJob(model, instructions, input, key, eff, deadline);
+    if (!res.timeout && !res.r.ok && ![401, 429].includes(res.r.status)){
+      // Background mode refused (model/account/project doesn't allow it): answer directly instead, within Netlify's limit.
+      console.error("Background start failed, trying direct:", res.r.status, res.b?.error?.message);
+      const base = { model, instructions, input, text: { format: { type: "json_object" } }, store: false };
+      let d = await call("POST", "/responses", key, eff ? { ...base, reasoning: { effort: "low" } } : base, Date.now() + 50000);
+      if (!d.timeout && d.r.status === 400 && /reasoning|effort/i.test(d.b?.error?.message || ""))
+        d = await call("POST", "/responses", key, base, Date.now() + 45000);
+      if (d.timeout) return json(504, { error: "The AI took too long to answer. Please try again." });
+      if (!d.r.ok){
+        const bgWhy = String(res.b?.error?.message || "").slice(0, 200);
+        const r = errorFor(d); const b = await r.json();
+        return json(r.status, { error: b.error + (bgWhy ? ` [background: ${bgWhy}]` : "") });
+      }
+      if (d.b?.status === "incomplete") return json(502, { error: "The reply was cut short. Please try again." });
+      const data = parseJSON(outputText(d.b));
+      if (!data || typeof data !== "object" || Array.isArray(data)) return json(502, { error: "The reply came back in an unexpected format. Please try again." });
+      return json(200, { data });
+    }
     if (res.timeout || !res.r.ok) return errorFor(res);
     const id = res.b?.id;
     if (!id) return json(502, { error: "The AI service returned an error. Please try again in a moment." });
