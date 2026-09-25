@@ -147,7 +147,20 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .prompt-line .q-text{flex:1}
 .prompt-line .ctl{display:flex;gap:2px;flex-shrink:0}
 /* standalone additions */
-.settings{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+header.top{position:relative;flex-direction:column;align-items:flex-start;gap:10px}
+header.top h1{padding-right:120px}
+.acct-wrap{position:absolute;top:0;right:0}
+.acct-btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 14px;font-weight:500}
+.acct-btn .av{width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;margin:-3px 0 -3px -8px}
+.acct-btn .chev{width:12px;height:12px;opacity:.6}
+.acct-btn .pip{width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.menu{position:absolute;right:0;top:calc(100% + 8px);z-index:30;width:340px;max-width:calc(100vw - 32px);max-height:min(78vh,640px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.16);padding:16px;display:flex;flex-direction:column;gap:14px}
+.menu[hidden]{display:none!important}
+.menu-sec{display:flex;flex-direction:column;gap:8px}
+.menu .acct{padding-bottom:14px;border-bottom:1px solid var(--line)}
+.menu .acct input[type=email],.menu .acct input[type=password]{max-width:none}
+.menu .acct form{max-width:none}
+.menu .btnrow button{flex:0 0 auto}
 .settings .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:560px){.settings .fields{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:4px}
@@ -232,9 +245,22 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
       <p class="sub">Write freely. AI reflects back the patterns in how you think and feel.</p>
       <p class="fine">Private · Not therapy or medical advice · 18+ · <a href="privacy.html">Privacy</a></p>
     </div>
-    <div class="btnrow">
-      <div class="store"><span class="dot" id="storeDot"></span><span id="storeText">Saved on this device</span></div>
-      <button type="button" id="settingsBtn">Backup</button>
+    <div class="store"><span class="dot" id="storeDot"></span><span id="storeText">Saved on this device</span></div>
+    <div class="acct-wrap">
+      <button type="button" id="settingsBtn" class="acct-btn" aria-haspopup="true" aria-expanded="false" aria-controls="settings">Backup</button>
+      <div class="menu" id="settings" hidden>
+        <div class="acct" id="acct" hidden></div>
+        <div class="menu-sec">
+          <span class="label">Backup file</span>
+          <div class="btnrow">
+            <button type="button" id="exportBtn">Export</button>
+            <button type="button" id="importBtn">Import</button>
+            <input type="file" id="importFile" accept="application/json,.json" hidden>
+          </div>
+          <span id="settingsMsg" class="small"></span>
+          <span class="small" id="backupHelp">Your entries are stored only on this device. Export a backup now and then, or use Export and Import to move entries to another device.</span>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -244,17 +270,6 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     <span class="btnrow"><button type="button" class="primary" id="backupNow">Back up</button><button type="button" class="ghost" id="backupLater">Later</button></span>
   </section>
 
-  <section class="settings" id="settings" hidden>
-    <div class="acct" id="acct" hidden></div>
-    <span class="label">Backup file</span>
-    <div class="btnrow">
-      <button type="button" id="exportBtn">Export entries (.json)</button>
-      <label class="small" for="importFile">Import a backup:</label>
-      <input type="file" id="importFile" accept="application/json,.json">
-      <span id="settingsMsg" class="small"></span>
-    </div>
-    <span class="small" id="backupHelp">Your entries are stored only on this device. Clearing browsing data deletes them, so export a backup now and then. Use Export and Import to move entries to another device.</span>
-  </section>
 
   <div class="grid">
     <div>
@@ -604,7 +619,12 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     const n = $("#entryText").value.trim().split(/\s+/).filter(Boolean).length; const touch = window.matchMedia("(pointer:coarse)").matches;
     $("#countHint").textContent = touch ? (n ? `${n} word${n===1?"":"s"}` : "") : (n ? `${n} word${n===1?"":"s"} · Ctrl/⌘ + Enter to save` : "Ctrl/⌘ + Enter to save");
   }
-  $("#settingsBtn").onclick = () => { const s = $("#settings"); s.hidden = !s.hidden; };
+  // account/backup dropdown (top right)
+  const setMenu = open => { $("#settings").hidden = !open; $("#settingsBtn").setAttribute("aria-expanded", open); };
+  $("#settingsBtn").onclick = e => { e.stopPropagation(); setMenu($("#settings").hidden); };
+  document.addEventListener("click", e => { if (!$("#settings").hidden && !e.target.closest(".acct-wrap")) setMenu(false); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#settings").hidden){ setMenu(false); $("#settingsBtn").focus(); } });
+  $("#importBtn").onclick = () => $("#importFile").click();
   $("#exportBtn").onclick = () => {
     const blob = new Blob([JSON.stringify({app:"thoughtpattern", exportedAt:new Date().toISOString(), entries: entries.map(({readingState, ...e}) => e), analysis}, null, 2)], {type:"application/json"});
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `thoughtpattern-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
@@ -879,7 +899,6 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
       const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
       cloud.sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     }catch{ return; } // offline: sign-in unavailable this time
-    $("#settingsBtn").textContent = "Account";
     cloud.state = "signedOut"; renderAcct();
     cloud.sb.auth.onAuthStateChange((_ev, session) => { const was = cloud.user?.id; cloud.user = session?.user || null; if (cloud.user?.id !== was) setTimeout(afterAuth, 0); });
     const { data } = await cloud.sb.auth.getSession();
@@ -896,7 +915,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     const { data, error } = await cloud.sb.from("profiles").select("salt,key_check").eq("user_id", cloud.user.id).maybeSingle();
     if (error){ cloud.state = "error"; cloud.msg = "Couldn't reach your account. Check your connection and reopen this panel."; renderAcct(); return; }
     cloud.profile = data; cloud.state = data ? "unlock" : "create";
-    renderAcct(); $("#settings").hidden = false; // ask for the passphrase right away
+    renderAcct(); $("#settings").hidden = false; $("#settingsBtn").setAttribute("aria-expanded", true); // ask for the passphrase right away
   }
 
   async function useKey(key){
@@ -1015,7 +1034,20 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
   function busyAcct(msg){ cloud.working = msg; cloud.msg = ""; renderAcct(); }
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : new Date(t).toLocaleString(undefined, {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}); };
   function pwField(ph){ const i = document.createElement("input"); i.type = "password"; i.placeholder = ph; i.autocomplete = "new-password"; i.required = true; return i; }
+  const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function renderAcctBtn(){
+    const b = $("#settingsBtn");
+    if (!cloud.sb){ b.textContent = "Backup"; b.setAttribute("aria-label", "Backup"); return; }
+    if (cloud.state === "ready" || cloud.state === "unlock" || cloud.state === "create"){
+      const name = cloud.user?.user_metadata?.full_name || cloud.user?.email || "?";
+      const init = el("span","av", name.trim()[0].toUpperCase());
+      b.replaceChildren(init); if (cloud.state !== "ready"){ const pip = el("span","pip"); pip.title = "Needs your passphrase"; b.append(pip); }
+      b.insertAdjacentHTML("beforeend", CHEV);
+      b.setAttribute("aria-label", `Account: ${cloud.user?.email || ""}`);
+    } else { b.innerHTML = "Sign in" + CHEV; b.setAttribute("aria-label", "Sign in"); }
+  }
   function renderAcct(){
+    renderAcctBtn();
     const box = $("#acct"); if (!cloud.sb){ box.hidden = true; return; }
     box.hidden = false; box.replaceChildren(el("span","label","Account & sync"));
     $("#backupHelp").textContent = cloud.state === "ready" ? "Your journal is backed up to your account automatically. You can still export a file copy." : "Your entries are stored only on this device. Sign in above to back them up automatically, or export a backup file now and then.";
