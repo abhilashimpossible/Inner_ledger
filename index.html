@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2F5470">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Inner Ledger">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Inner Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EEF0EE; --surface:#FFFFFF; --surface-2:#F6F7F5; --ink:#1D2729; --muted:#5B686C; --line:#D5DBDA;
+  --accent:#2F5470; --accent-ink:#FFFFFF; --accent-soft:#E1E9EF; --rose:#A5596A; --rose-soft:#F4E6E9;
+  --good:#3F7A5A; --warn:#A06A1C; --crit:#B23A3A; --crit-soft:#FBE9E7;
+  --serif:"Newsreader", Georgia, "Times New Roman", serif;
+  --sans:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111719; --surface:#182022; --surface-2:#1D2629; --ink:#E3E8E8; --muted:#95A3A6; --line:#2D383B;
+    --accent:#8DB3D3; --accent-ink:#0E1A22; --accent-soft:#1F3140; --rose:#DB9AA9; --rose-soft:#35222A;
+    --good:#7FC29B; --warn:#E0B060; --crit:#EE8A80; --crit-soft:#3A1F1E;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111719; --surface:#182022; --surface-2:#1D2629; --ink:#E3E8E8; --muted:#95A3A6; --line:#2D383B;
+  --accent:#8DB3D3; --accent-ink:#0E1A22; --accent-soft:#1F3140; --rose:#DB9AA9; --rose-soft:#35222A;
+  --good:#7FC29B; --warn:#E0B060; --crit:#EE8A80; --crit-soft:#3A1F1E;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:16px}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0;letter-spacing:-.01em}
+h1 em{font-style:italic;color:var(--accent)}
+.sub{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.store{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--good)}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:1fr}}
+.tabs{display:none}
+@media (max-width:880px){
+  body{padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 84px)}
+  .tabs{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding:8px 16px calc(env(safe-area-inset-bottom,0px) + 8px);gap:8px}
+  .tabs button{flex:1;padding:10px;border-radius:9px;font-weight:500}
+  .tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  body[data-tab="journal"] #panel{display:none}
+  body[data-tab="reading"] .grid > div:first-child{display:none}
+  .sub{font-size:14px}
+  .field input[type=text],.field input[type=password]{font-size:16px!important}
+}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+/* composer */
+.composer{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.composer textarea{width:100%;min-height:150px;resize:vertical;border:0;background:transparent;color:var(--ink);font-family:var(--serif);font-size:18px;line-height:1.55;outline:none}
+.composer .row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.hint{font-size:13px;color:var(--muted)}
+button{font:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+button.primary:hover{filter:brightness(1.08)}
+button:disabled{opacity:.55;cursor:default}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:4px 8px;font-size:13px}
+button.ghost:hover{color:var(--crit)}
+/* entries */
+.entries{display:flex;flex-direction:column;gap:0}
+.entries-head{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 8px}
+.entry{border-top:1px solid var(--line);padding:14px 2px;display:flex;flex-direction:column;gap:6px}
+.entry .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.entry time{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.entry p{font-family:var(--serif);font-size:17px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.entry .note{font-size:13px;color:var(--muted);font-style:italic}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--ink);border:1px solid transparent}
+.chip.rose{background:var(--rose-soft)}
+.chip.ex{background:transparent;border-color:var(--line);color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+.mood{font-family:var(--mono);font-size:12px}
+.entry.example{opacity:.8}
+.empty-note{font-size:13px;color:var(--muted);background:var(--surface-2);border:1px dashed var(--line);border-radius:8px;padding:10px 12px}
+/* analysis */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:20px}
+@media (min-width:881px){.panel{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);max-height:calc(100vh - 32px);overflow:auto}}
+.panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px}
+.panel h2{font-family:var(--serif);font-weight:500;font-size:26px;margin:2px 0 0;text-wrap:balance}
+.lens-row{display:flex;flex-wrap:wrap;gap:6px}
+.lens{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.overview{font-family:var(--serif);font-size:18px;line-height:1.6;margin:0;max-width:65ch}
+section.block{display:flex;flex-direction:column;gap:10px}
+section.block h3{margin:0;font-size:15px;font-weight:600;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+section.block h3 .label{font-weight:400}
+.item{border-left:2px solid var(--line);padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:4px}
+.item .t{font-weight:600}
+.item .d{color:var(--ink)}
+.q{font-family:var(--serif);font-style:italic;color:var(--muted)}
+.reframe{font-size:14px}
+.reframe b{color:var(--good);font-weight:600}
+.conf{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.conf.high{color:var(--rose);border-color:var(--rose)}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:110px 1fr 28px;align-items:center;gap:10px;font-size:13px}
+.bar .track{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.bar .fill{height:100%;background:var(--rose)}
+.bar .n{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:560px){.two{grid-template-columns:1fr}.bar{grid-template-columns:90px 1fr 24px}}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.ex-card{background:var(--surface-2);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px}
+.ex-card ol{margin:4px 0 0;padding-left:20px}
+.risk{background:var(--crit-soft);border:1px solid var(--crit);border-radius:8px;padding:12px 14px;font-size:14px}
+.risk b{color:var(--crit)}
+.status{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:10px}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.disclaimer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+.spark{width:100%;height:60px;display:block}
+.err{color:var(--crit);font-size:14px}
+
+/* standalone additions */
+.settings{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.settings .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.settings .fields{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:4px}
+.field.wide{grid-column:1/-1}
+.field input[type=text],.field input[type=password]{font:inherit;font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface-2);color:var(--ink);width:100%}
+.field input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.small{font-size:12px;color:var(--muted)}
+.ok{color:var(--good);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Inner <em>Ledger</em></h1>
+      <p class="sub">Write what's on your mind. Each entry is kept on this device, and an AI model reads across all of them to reflect back recurring patterns through several psychological lenses.</p>
+    </div>
+    <div class="btnrow">
+      <div class="store"><span class="dot" id="storeDot"></span><span id="storeText">Saved on this device</span></div>
+      <button type="button" id="settingsBtn">Backup</button>
+    </div>
+  </header>
+
+  <section class="settings" id="settings" hidden>
+    <span class="label">Backup</span>
+    <div class="btnrow">
+      <button type="button" id="exportBtn">Export entries (.json)</button>
+      <label class="small" for="importFile">Import a backup:</label>
+      <input type="file" id="importFile" accept="application/json,.json">
+      <span id="settingsMsg" class="small"></span>
+    </div>
+    <span class="small">Your entries are stored only on this device. Clearing browsing data deletes them, so export a backup now and then. Use Export and Import to move entries to another device.</span>
+  </section>
+
+  <div class="grid">
+    <div>
+      <form class="composer" id="composer">
+        <label class="label" for="entryText">New entry</label>
+        <textarea id="entryText" placeholder="What happened today, and how did it feel? Write freely: thoughts, worries, a conversation that stuck with you…"></textarea>
+        <div class="row">
+          <span class="hint" id="countHint"></span>
+          <button type="submit" class="primary" id="saveBtn">Save entry</button>
+        </div>
+      </form>
+
+      <div class="entries-head">
+        <span class="label" id="entriesLabel">Entries</span>
+        <span class="label" id="moodLabel"></span>
+      </div>
+      <svg class="spark" id="spark" viewBox="0 0 300 60" preserveAspectRatio="none" aria-label="Mood across entries" hidden></svg>
+      <div class="entries" id="entries"></div>
+    </div>
+
+    <aside class="panel" id="panel" aria-live="polite">
+      <div class="panel-head">
+        <div>
+          <span class="label" id="panelEyebrow">Reading</span>
+          <h2 id="panelTitle">Patterns across your entries</h2>
+        </div>
+        <button class="primary" id="analyseBtn" type="button">Analyse my entries</button>
+      </div>
+      <div class="lens-row">
+        <span class="lens">CBT distortions</span><span class="lens">Schema therapy</span><span class="lens">Psychodynamic defenses</span><span class="lens">Attachment</span><span class="lens">Emotion &amp; needs</span>
+      </div>
+      <div id="analysis"></div>
+      <p class="disclaimer">This is a reflective tool, not a diagnosis or a substitute for a therapist. Its readings are hypotheses to test against your own experience. If you are in distress in India, call Tele-MANAS on 14416 (24×7, free), or your local emergency number.</p>
+    </aside>
+  </div>
+</div>
+<nav class="tabs" role="tablist" aria-label="Sections">
+  <button type="button" role="tab" id="tabJournal" aria-selected="true">Journal</button>
+  <button type="button" role="tab" id="tabReading" aria-selected="false">Reading</button>
+</nav>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const arr = v => Array.isArray(v) ? v : [];
+
+  // ---------- example data (shown only until the first real entry) ----------
+  const now = Date.now(), day = 864e5;
+  const EXAMPLE_ENTRIES = [
+    {id:"x3", createdAt: now - 1*day, text:"Presented in the team meeting. Manager said 'good, but let's tighten the numbers'. I've replayed it all evening. I'm sure everyone thinks I was underprepared. Cancelled dinner with Riya because I didn't feel like being around people.", reading:{mood:"Anxious, ashamed", valence:-3, tags:["Mind reading","Catastrophising"], note:"Neutral feedback read as a verdict on your worth."}},
+    {id:"x2", createdAt: now - 4*day, text:"Mum called and asked again when I'm getting a 'proper' job. I said nothing, then snapped at my brother an hour later over nothing.", reading:{mood:"Frustrated", valence:-2, tags:["Displacement"], note:"Anger held back with one person surfaced with a safer one."}},
+    {id:"x1", createdAt: now - 7*day, text:"Good day actually. Finished the side project and went for a long walk. Felt light. Then worried that I don't deserve to feel this relaxed when there's so much left to do.", reading:{mood:"Content, then guilty", valence:1, tags:["Should statements"], note:"Rest seems to need permission you don't give yourself."}}
+  ];
+  const EXAMPLE_ANALYSIS = {
+    overview:"Across these entries a consistent loop appears: an ordinary event (feedback, a question from family, a moment of rest) is quickly interpreted as evidence that you are falling short, which brings shame, then withdrawal or irritation. Your standards seem to act less like goals and more like conditions for being acceptable.",
+    risk:{flag:false, note:""},
+    patterns:[
+      {title:"Feedback → shame → withdrawal", description:"Mild criticism is heard as a judgement of your whole self, and you pull back from people who might comfort you.", evidence:["I'm sure everyone thinks I was underprepared","Cancelled dinner with Riya"], confidence:"high"},
+      {title:"Rest has to be earned", description:"Pleasure and relaxation are followed by guilt, suggesting an internal rule that worth comes from productivity.", evidence:["I don't deserve to feel this relaxed"], confidence:"medium"}
+    ],
+    distortions:[
+      {name:"Mind reading", quote:"I'm sure everyone thinks I was underprepared", reframe:"What did people actually say or do? The only data point was 'good, but tighten the numbers'."},
+      {name:"Should statements", quote:"I don't deserve to feel this relaxed", reframe:"Rest is part of doing good work, not a reward for finishing all of it."}
+    ],
+    coreBeliefs:[{belief:"I am only acceptable when I perform well.", schema:"Unrelenting standards / Defectiveness", origin_hypothesis:"Possibly shaped by repeated evaluation of your choices at home (e.g. the 'proper job' question)."}],
+    defenses:[{name:"Displacement", how_it_shows:"Frustration with your mother was expressed toward your brother instead."},{name:"Withdrawal / avoidance", how_it_shows:"Cancelling plans after feeling exposed."}],
+    attachment:{style_leaning:"Anxious-avoidant mix", notes:"You seem to fear judgement (anxious) and respond by pulling away (avoidant) rather than seeking reassurance."},
+    emotions:[{emotion:"Shame",intensity:7},{emotion:"Anxiety",intensity:6},{emotion:"Frustration",intensity:5},{emotion:"Guilt",intensity:5},{emotion:"Contentment",intensity:3}],
+    needs:["Acceptance without conditions","Autonomy over your career choices","Permission to rest"],
+    strengths:["You notice and name your reactions honestly","You finish things you care about"],
+    questions:["Whose voice does 'you don't deserve to relax' sound like?","What would you tell a friend who got the same feedback?"],
+    exercises:[{name:"Thought record", technique:"CBT", steps:["Write the situation and the automatic thought","Rate how much you believe it (0–100)","List evidence for and against","Write a balanced thought and re-rate"]}]
+  };
+
+  // ---------- storage (this browser only) ----------
+  const LS_DATA = "inner-ledger-data", LS_DRAFT = "inner-ledger-draft";
+  const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+
+  const saved = lsGet(LS_DATA) || {};
+  let entries = arr(saved.entries);   // newest first
+  let analysis = saved.analysis || null;
+  let analysing = false, analysisCtl = null, analysisErr = "", pendingDelete = null;
+
+  const persist = () => {
+    const ok = lsSet(LS_DATA, {entries: entries.map(({readingState, ...e}) => e), analysis});
+    $("#storeDot").className = "dot" + (ok ? " ok" : "");
+    $("#storeText").textContent = ok ? "Saved on this device" : "Couldn't save. Export a backup";
+  };
+  const showingExamples = () => entries.length === 0;
+
+  // ---------- OpenAI (Responses API, JSON mode) ----------
+  // ---------- AI (via this site's own server function; the key never reaches the browser) ----------
+  async function callAI(payload, signal){
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 150000);
+    const onAbort = () => ctl.abort(); signal?.addEventListener("abort", onAbort);
+    let res, body;
+    try{
+      res = await fetch("/api/ai", { method:"POST", signal: ctl.signal, headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      body = await res.json().catch(() => null);
+    }catch(e){
+      if (signal?.aborted) throw {code:"cancelled"};
+      if (ctl.signal.aborted) throw {message:"The AI took too long to answer. Please try again."};
+      throw {message:"Couldn't connect. Check your internet connection and try again."};
+    }finally{ clearTimeout(t); signal?.removeEventListener("abort", onAbort); }
+    if (!res.ok || !body?.data) throw {message: body?.error || "Something went wrong. Please try again."};
+    return body.data;
+  }
+
+  async function readEntry(entry){
+    entry.readingState = "pending"; renderEntries();
+    try{
+      const r = await callAI({kind:"quick", text: entry.text});
+      entry.reading = {
+        mood: String(r?.mood || "").slice(0,40),
+        valence: Math.max(-5, Math.min(5, Math.round(Number(r?.valence) || 0))),
+        tags: arr(r?.tags).slice(0,3).map(t => String(t).slice(0,40)),
+        note: String(r?.note || "").slice(0,200)
+      };
+    }catch(e){ entry.readingError = e.message || "Quick read failed."; }
+    delete entry.readingState; persist(); renderAll();
+  }
+
+  async function runAnalysis(){
+    if (analysing){ analysisCtl?.abort(); return; }
+    if (!entries.length) return;
+    analysing = true; analysisErr = ""; analysisCtl = new AbortController(); renderAnalysis();
+    try{
+      const data = await callAI({kind:"deep", entries: entries.map(e => ({date: new Date(e.createdAt).toISOString().replace("T"," "), text: e.text}))}, analysisCtl.signal);
+      if (!data || typeof data !== "object" || Array.isArray(data)) throw {message:"The reply came back in an unexpected format. Press Analyse to try again."};
+      analysis = {data, at: Date.now(), count: entries.length};
+      persist();
+    }catch(e){ analysisErr = e.code === "cancelled" ? "" : (e.message || "The analysis failed. Try again."); }
+    finally{ analysing = false; analysisCtl = null; renderAll(); }
+  }
+
+  // ---------- render ----------
+  function fmtDate(t){ const d = new Date(t); return d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}) + " · " + d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); }
+
+  function renderEntries(){
+    const list = showingExamples() ? EXAMPLE_ENTRIES : entries;
+    const box = $("#entries"); box.replaceChildren();
+    $("#entriesLabel").textContent = showingExamples() ? "Example entries" : `Entries · ${entries.length}`;
+    if (showingExamples()) box.append(el("div","empty-note","These are examples to show how the app works. They disappear when you save your first entry."));
+    for (const e of list){
+      const row = el("article","entry" + (showingExamples() ? " example" : ""));
+      const meta = el("div","meta");
+      const left = el("div","chips"); left.append(el("time",null,fmtDate(e.createdAt)));
+      if (showingExamples()) left.append(el("span","chip ex","Example"));
+      const right = el("div","chips");
+      if (e.reading?.mood) right.append(el("span","mood", e.reading.mood + (typeof e.reading.valence === "number" ? `  ${e.reading.valence > 0 ? "+" : ""}${e.reading.valence}` : "")));
+      if (!showingExamples()){
+        if (!e.reading && !e.readingState && e.readingError){ const rb = el("button","ghost","Read"); rb.type="button"; rb.onclick = () => { delete e.readingError; readEntry(Object.assign(e,{})); }; right.append(rb); }
+        const del = el("button","ghost", pendingDelete === e.id ? "Confirm delete" : "Delete"); del.type = "button"; del.onclick = () => onDelete(e.id); right.append(del);
+      }
+      meta.append(left, right);
+      row.append(meta, el("p",null,e.text));
+      if (e.reading?.tags?.length){ const c = el("div","chips"); e.reading.tags.forEach(t => c.append(el("span","chip rose",t))); row.append(c); }
+      if (e.reading?.note) row.append(el("div","note",e.reading.note));
+      else if (e.readingState) row.append(el("div","note","Reading this entry…"));
+      else if (e.readingError) row.append(el("div","err",e.readingError));
+      box.append(row);
+    }
+    renderSpark(list);
+  }
+
+  function renderSpark(list){
+    const pts = list.filter(e => typeof e.reading?.valence === "number").slice().reverse();
+    const svg = $("#spark");
+    if (pts.length < 2){ svg.hidden = true; $("#moodLabel").textContent = ""; return; }
+    svg.hidden = false;
+    const W = 300, H = 60, pad = 6;
+    const x = i => pad + i * (W - 2*pad) / (pts.length - 1);
+    const y = v => H/2 - (Math.max(-5,Math.min(5,v)) / 5) * (H/2 - pad);
+    const d = pts.map((p,i) => `${i?"L":"M"}${x(i).toFixed(1)},${y(p.reading.valence).toFixed(1)}`).join(" ");
+    const last = pts[pts.length-1];
+    svg.innerHTML = `<line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" stroke="var(--line)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
+      <path d="${d} L${x(pts.length-1)},${H/2} L${x(0)},${H/2} Z" fill="var(--accent-soft)" opacity=".7"/>
+      <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      <circle cx="${x(pts.length-1)}" cy="${y(last.reading.valence)}" r="3.5" fill="var(--accent)"/>`;
+    const avg = pts.reduce((s,p)=>s+p.reading.valence,0)/pts.length;
+    $("#moodLabel").textContent = `Mood trend · avg ${avg>0?"+":""}${avg.toFixed(1)} on −5…+5`;
+  }
+
+  function block(title, lens){ const s = el("section","block"); const h = el("h3",null,title); if (lens) h.append(el("span","label",lens)); s.append(h); return s; }
+
+  function renderAnalysis(){
+    const box = $("#analysis"); box.replaceChildren();
+    const btn = $("#analyseBtn");
+    btn.textContent = analysing ? "Stop" : (analysis ? "Re-analyse" : "Analyse my entries");
+    btn.disabled = !analysing && showingExamples();
+
+    if (analysing){ const st = el("div","status"); st.append(el("span","spin"), el("span",null,`Reading ${entries.length} entr${entries.length===1?"y":"ies"} through each lens. This usually takes 20–90 seconds.`)); box.append(st); }
+    if (analysisErr) box.append(el("p","err",analysisErr));
+
+    let data;
+    if (showingExamples()){ data = EXAMPLE_ANALYSIS; $("#panelEyebrow").textContent = "Example reading · based on the example entries"; }
+    else if (analysis){ data = analysis.data; $("#panelEyebrow").textContent = `Reading of ${analysis.count} entr${analysis.count===1?"y":"ies"} · ${fmtDate(analysis.at)}` + (analysis.count < entries.length ? ` · ${entries.length - analysis.count} new since` : ""); }
+    else {
+      $("#panelEyebrow").textContent = "Reading";
+      if (!analysing) box.append(el("p","overview", entries.length < 3 ? `You have ${entries.length} entr${entries.length===1?"y":"ies"}. You can analyse now, but patterns become clearer after three or more.` : "Press Analyse to get a reading of the patterns across your entries."));
+      return;
+    }
+
+    if (data.risk?.flag){
+      const r = el("div","risk"); r.append(el("b",null,"Please look after yourself right now. "), document.createTextNode((data.risk.note ? data.risk.note + " " : "") + "You can talk to someone today: Tele-MANAS 14416 or KIRAN 1800-599-0019 (India, free, 24×7), or your local emergency number."));
+      box.append(r);
+    }
+    if (data.overview){ const s = block("Overview"); s.append(el("p","overview",data.overview)); box.append(s); }
+    if (arr(data.patterns).length){
+      const s = block("Recurring patterns");
+      for (const p of data.patterns){ const it = el("div","item"); const t = el("div","t",(p.title||"") + " "); if (p.confidence) t.append(el("span","conf" + (p.confidence==="high"?" high":""), p.confidence)); it.append(t, el("div","d",p.description||"")); arr(p.evidence).forEach(q => it.append(el("div","q","“" + q + "”"))); s.append(it); }
+      box.append(s);
+    }
+    if (arr(data.distortions).length){
+      const s = block("Thinking traps","CBT");
+      for (const d of data.distortions){ const it = el("div","item"); it.append(el("div","t",d.name||"")); if (d.quote) it.append(el("div","q","“" + d.quote + "”")); if (d.reframe){ const r = el("div","reframe"); r.append(el("b",null,"Try: "), document.createTextNode(d.reframe)); it.append(r); } s.append(it); }
+      box.append(s);
+    }
+    if (arr(data.coreBeliefs).length){
+      const s = block("Core beliefs","Schema therapy");
+      for (const c of data.coreBeliefs){ const it = el("div","item"); it.append(el("div","t","“" + (c.belief||"") + "”")); if (c.schema) it.append(el("div","label",c.schema)); if (c.origin_hypothesis) it.append(el("div","d",c.origin_hypothesis)); s.append(it); }
+      box.append(s);
+    }
+    const two = el("div","two");
+    if (arr(data.defenses).length){ const s = block("Defenses","Psychodynamic"); data.defenses.forEach(d => { const it = el("div","item"); it.append(el("div","t",d.name||""), el("div","d",d.how_it_shows||"")); s.append(it); }); two.append(s); }
+    if (data.attachment?.style_leaning){ const s = block("Attachment"); const it = el("div","item"); it.append(el("div","t",data.attachment.style_leaning), el("div","d",data.attachment.notes || "")); s.append(it); two.append(s); }
+    if (two.children.length) box.append(two);
+    if (arr(data.emotions).length){
+      const s = block("Emotional landscape","intensity 0–10"); const bars = el("div","bars");
+      data.emotions.slice(0,8).forEach(e => { const v = Math.max(0,Math.min(10,Number(e.intensity)||0)); const b = el("div","bar"); const tr = el("div","track"); const f = el("div","fill"); f.style.width = (v*10)+"%"; tr.append(f); b.append(el("span",null,e.emotion||""), tr, el("span","n",String(v))); bars.append(b); });
+      s.append(bars); box.append(s);
+    }
+    const two2 = el("div","two");
+    if (arr(data.needs).length){ const s = block("Unmet needs"); const u = el("ul","plain"); data.needs.forEach(n => u.append(el("li",null,String(n)))); s.append(u); two2.append(s); }
+    if (arr(data.strengths).length){ const s = block("Strengths"); const u = el("ul","plain"); data.strengths.forEach(n => u.append(el("li",null,String(n)))); s.append(u); two2.append(s); }
+    if (two2.children.length) box.append(two2);
+    if (arr(data.questions).length){ const s = block("Questions to sit with"); const u = el("ul","plain"); data.questions.forEach(q => u.append(el("li","q",String(q)))); s.append(u); box.append(s); }
+    if (arr(data.exercises).length){
+      const s = block("Try this week");
+      data.exercises.forEach(x => { const c = el("div","ex-card"); const t = el("div","t",(x.name||"") + " "); if (x.technique) t.append(el("span","label",x.technique)); c.append(t); const ol = el("ol"); arr(x.steps).forEach(st => ol.append(el("li",null,String(st)))); c.append(ol); s.append(c); });
+      box.append(s);
+    }
+  }
+
+  function renderAll(){ renderEntries(); renderAnalysis(); }
+
+  // ---------- actions ----------
+  function onSave(ev){
+    ev?.preventDefault();
+    const ta = $("#entryText"); const text = ta.value.trim();
+    if (!text) return;
+    const entry = {id: "e" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), text, createdAt: Date.now()};
+    entries.unshift(entry); ta.value = ""; updateCount();
+    try { localStorage.removeItem(LS_DRAFT); } catch {}
+    pendingDelete = null; persist(); renderAll();
+    readEntry(entry);
+  }
+  function onDelete(id){
+    if (pendingDelete !== id){ pendingDelete = id; renderEntries(); return; }
+    pendingDelete = null; entries = entries.filter(e => e.id !== id); persist(); renderAll();
+  }
+  function updateCount(){
+    const n = $("#entryText").value.trim().split(/\s+/).filter(Boolean).length; const touch = window.matchMedia("(pointer:coarse)").matches;
+    $("#countHint").textContent = touch ? (n ? `${n} word${n===1?"":"s"}` : "") : (n ? `${n} word${n===1?"":"s"} · Ctrl/⌘ + Enter to save` : "Ctrl/⌘ + Enter to save");
+  }
+  $("#settingsBtn").onclick = () => { const s = $("#settings"); s.hidden = !s.hidden; };
+  $("#exportBtn").onclick = () => {
+    const blob = new Blob([JSON.stringify({app:"inner-ledger", exportedAt:new Date().toISOString(), entries: entries.map(({readingState, ...e}) => e), analysis}, null, 2)], {type:"application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `inner-ledger-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  $("#importFile").onchange = async ev => {
+    const f = ev.target.files?.[0]; if (!f) return;
+    try{
+      const d = JSON.parse(await f.text()); const inc = arr(d.entries).filter(e => e && typeof e.text === "string");
+      const have = new Set(entries.map(e => e.id)); let added = 0;
+      for (const e of inc) if (!have.has(e.id)){ entries.push({id: String(e.id || ("e"+Math.random().toString(36).slice(2))), text: e.text, createdAt: Number(e.createdAt)||Date.now(), reading: e.reading || null}); added++; }
+      entries.sort((a,b) => b.createdAt - a.createdAt);
+      if (!analysis && d.analysis) analysis = d.analysis;
+      persist(); renderAll(); $("#settingsMsg").textContent = `Imported ${added} new entr${added===1?"y":"ies"}.`;
+    }catch{ $("#settingsMsg").textContent = "That file isn't an Inner Ledger backup."; }
+    ev.target.value = "";
+  };
+
+  $("#composer").addEventListener("submit", onSave);
+  $("#entryText").addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") onSave(e); });
+  let draftT; $("#entryText").addEventListener("input", () => { updateCount(); clearTimeout(draftT); draftT = setTimeout(() => { try { localStorage.setItem(LS_DRAFT, $("#entryText").value); } catch {} }, 400); });
+  $("#analyseBtn").addEventListener("click", runAnalysis);
+  try { const d = localStorage.getItem(LS_DRAFT); if (d) { $("#entryText").value = d; updateCount(); } } catch {}
+
+  function setTab(t){
+    document.body.dataset.tab = t;
+    $("#tabJournal").setAttribute("aria-selected", t === "journal");
+    $("#tabReading").setAttribute("aria-selected", t === "reading");
+    window.scrollTo(0,0);
+  }
+  $("#tabJournal").onclick = () => setTab("journal");
+  $("#tabReading").onclick = () => setTab("reading");
+  setTab("journal");
+  $("#analyseBtn").addEventListener("click", () => { if (window.matchMedia("(max-width:880px)").matches) setTab("reading"); });
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+  updateCount(); persist(); renderAll();
+})();
+</script>
+</body>
+</html>
