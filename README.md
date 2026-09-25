@@ -1,4 +1,6 @@
-# Inner Ledger
+# ThoughtPattern
+
+(Formerly "Inner Ledger". Browser storage keys still use the old `inner-ledger-*` names so existing data keeps working.)
 
 A private journal web app. Users write entries; an AI reads across them and reflects back recurring
 patterns through several psychological lenses (CBT thinking traps, schemas, defenses, attachment,

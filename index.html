@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#2F5470">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Inner Ledger">
+<meta name="apple-mobile-web-app-title" content="ThoughtPattern">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>Inner Ledger</title>
+<title>ThoughtPattern</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -174,7 +174,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>Inner <em>Ledger</em></h1>
+      <h1>Thought<em>Pattern</em></h1>
       <p class="sub">Write what's on your mind. Each entry is kept on this device, and an AI model reads across all of them to reflect back recurring patterns through several psychological lenses.</p>
     </div>
     <div class="btnrow">
@@ -537,8 +537,8 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
   }
   $("#settingsBtn").onclick = () => { const s = $("#settings"); s.hidden = !s.hidden; };
   $("#exportBtn").onclick = () => {
-    const blob = new Blob([JSON.stringify({app:"inner-ledger", exportedAt:new Date().toISOString(), entries: entries.map(({readingState, ...e}) => e), analysis}, null, 2)], {type:"application/json"});
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `inner-ledger-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+    const blob = new Blob([JSON.stringify({app:"thoughtpattern", exportedAt:new Date().toISOString(), entries: entries.map(({readingState, ...e}) => e), analysis}, null, 2)], {type:"application/json"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `thoughtpattern-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
   $("#importFile").onchange = async ev => {
@@ -550,7 +550,7 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
       entries.sort((a,b) => b.createdAt - a.createdAt);
       if (!analysis && d.analysis) analysis = d.analysis;
       persist(); renderAll(); $("#settingsMsg").textContent = `Imported ${added} new entr${added===1?"y":"ies"}.`;
-    }catch{ $("#settingsMsg").textContent = "That file isn't an Inner Ledger backup."; }
+    }catch{ $("#settingsMsg").textContent = "That file isn't a ThoughtPattern (or Inner Ledger) backup."; }
     ev.target.value = "";
   };
 

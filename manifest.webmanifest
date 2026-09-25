@@ -1,6 +1,6 @@
 {
-  "name": "Inner Ledger",
-  "short_name": "Ledger",
+  "name": "ThoughtPattern",
+  "short_name": "ThoughtPattern",
   "description": "A private journal that reflects your thought patterns back to you.",
   "start_url": "./",
   "scope": "./",
