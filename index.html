@@ -320,7 +320,12 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
       if (ctl.signal.aborted) throw {message:"The AI took too long to answer. Please try again."};
       throw {message:"Couldn't connect. Check your internet connection and try again."};
     }finally{ clearTimeout(t); signal?.removeEventListener("abort", onAbort); }
-    if (!res.ok || !body?.data) throw {message: body?.error || "Something went wrong. Please try again."};
+    if (!res.ok || !body?.data){
+      if (body?.error) throw {message: body.error};
+      if (res.status === 404) throw {message:"The AI service isn't set up on this site yet (the server function is missing). The site needs to be deployed from GitHub, not by drag-and-drop."};
+      if (res.status === 401 || res.status === 403) throw {message:"This site is private, so the AI service is blocked. Make the site public in Netlify, then try again."};
+      throw {message:`The AI service returned an unexpected error (${res.status}). Please try again.`};
+    }
     return body.data;
   }
 
