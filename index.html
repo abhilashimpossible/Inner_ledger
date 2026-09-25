@@ -159,9 +159,11 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .small{font-size:12px;color:var(--muted)}
 .ok{color:var(--good);font-size:13px}
 .fine{font-size:12px;color:var(--muted);margin:4px 0 0}
-.notice{background:var(--accent-soft);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:14px}
-.notice p{margin:0}
-.notice a{color:var(--accent);font-weight:500}
+.strip{background:var(--accent-soft);border-radius:8px;padding:8px 8px 8px 12px;display:flex;align-items:center;gap:10px;font-size:13px;line-height:1.4}
+.strip p{margin:0;flex:1;min-width:0}
+.strip a{color:var(--accent);font-weight:600}
+.strip button{padding:5px 12px;font-size:13px;flex-shrink:0}
+.strip .btnrow{flex-wrap:nowrap;gap:2px}
 /* monthly recap */
 .recap{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px}
 .recap:empty{display:none}
@@ -192,8 +194,8 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
   <header class="top">
     <div>
       <h1>Thought<em>Pattern</em></h1>
-      <p class="sub">Write what's on your mind. Each entry is kept on this device, and an AI model reads across all of them to reflect back recurring patterns through several psychological lenses.</p>
-      <p class="fine">A reflection tool, not therapy or medical advice. For adults 18+.</p>
+      <p class="sub">Write freely. AI reflects back the patterns in how you think and feel.</p>
+      <p class="fine">Private to this device · Not therapy or medical advice · 18+</p>
     </div>
     <div class="btnrow">
       <div class="store"><span class="dot" id="storeDot"></span><span id="storeText">Saved on this device</span></div>
@@ -201,17 +203,14 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     </div>
   </header>
 
-  <section class="notice" id="welcome" hidden>
-    <b>Before you start</b>
-    <p>ThoughtPattern is for adults (18+). It's a space to reflect, not a replacement for a therapist, doctor or crisis help, and its readings are possibilities, not diagnoses.</p>
-    <p>Your entries stay on this device. To create readings, the text of an entry is sent to an AI service (OpenAI); it isn't kept on our servers.</p>
-    <p>If you're under 18, please talk to a trusted adult. If you're struggling, call <a href="tel:14416">Tele-MANAS 14416</a> or <a href="tel:18005990019">KIRAN 1800-599-0019</a> (India, free, 24×7).</p>
-    <div class="btnrow"><button type="button" class="primary" id="welcomeOk">I'm 18+ and I understand</button></div>
+  <section class="strip" id="welcome" hidden>
+    <p>Your words go to an AI only to create readings. Struggling? Call <a href="tel:14416">14416</a>, free, 24×7.</p>
+    <button type="button" class="primary" id="welcomeOk">Got it</button>
   </section>
 
-  <section class="notice" id="backupNudge" hidden>
-    <span id="backupNudgeText"></span>
-    <div class="btnrow"><button type="button" class="primary" id="backupNow">Export a backup</button><button type="button" class="ghost" id="backupLater">Later</button></div>
+  <section class="strip" id="backupNudge" hidden>
+    <p id="backupNudgeText"></p>
+    <span class="btnrow"><button type="button" class="primary" id="backupNow">Back up</button><button type="button" class="ghost" id="backupLater">Later</button></span>
   </section>
 
   <section class="settings" id="settings" hidden>
@@ -658,8 +657,8 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     const due = entries.length >= 3 && unsaved >= 3 && t > snooze && (last ? t - last > 14*day : t - oldest > 7*day);
     $("#backupNudge").hidden = !due || !$("#welcome").hidden;
     if (due) $("#backupNudgeText").textContent = last
-      ? `It's been ${Math.round((t - last)/day)} days since your last backup, and you've written ${unsaved} entries since. Your journal lives only on this device, so a backup keeps it safe.`
-      : `You have ${entries.length} entries and no backup yet. Your journal lives only on this device, so clearing browser data would erase it. A backup takes a few seconds.`;
+      ? `${unsaved} entries since your last backup (${Math.round((t - last)/day)} days ago). They live only on this device.`
+      : `${entries.length} entries and no backup yet. They live only on this device.`;
   }
   $("#welcomeOk").onclick = () => { lsSet(LS_ACK, Date.now()); renderNotices(); };
   $("#backupNow").onclick = () => $("#exportBtn").click();
