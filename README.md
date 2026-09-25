@@ -20,3 +20,15 @@ emotions and needs). It is a reflective tool, not a diagnosis.
 3. Deploys → Trigger deploy. Every push to `main` redeploys automatically.
 
 Optional env vars: `QUICK_MODEL` (default `gpt-6-luna`), `DEEP_MODEL` (default `gpt-6-sol`).
+
+## Optional: sign-in and encrypted sync (Supabase)
+Sign-in is off until these are set. When set, users can sign in (Google or email link) and their
+journal syncs across devices. Entries are encrypted on the device with the user's passphrase before
+upload, so the server only stores ciphertext.
+1. Create a free project at supabase.com. In SQL Editor, run `supabase/schema.sql`.
+2. Authentication → URL Configuration: Site URL = `https://thoughtpattern.netlify.app`, and add it to Redirect URLs.
+3. Authentication → Providers → Google: add a Google OAuth client ID/secret (Google Cloud Console →
+   Credentials → OAuth client, type Web; authorised redirect URI = the callback URL Supabase shows).
+4. Netlify → Environment variables: `SUPABASE_URL` and `SUPABASE_ANON_KEY` (Supabase → Project Settings → API). Redeploy.
+Email links use Supabase's built-in mailer, which only sends a few emails per hour; add custom SMTP
+(e.g. Resend) under Authentication → Emails before a public launch.

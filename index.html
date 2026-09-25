@@ -173,6 +173,14 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .intro-go{padding:14px;font-size:16px;border-radius:10px;width:100%}
 body.intro-open{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.intro{transition:none}}
+.acct{display:flex;flex-direction:column;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.acct p{margin:0;font-size:14px}
+.acct .warn{font-size:13px;color:var(--warn)}
+.acct input[type=email],.acct input[type=password]{font:inherit;font-size:16px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);width:100%;max-width:340px}
+.acct form{display:flex;flex-direction:column;gap:8px;max-width:340px}
+.gbtn{display:inline-flex;align-items:center;gap:10px;font-weight:500;align-self:flex-start}
+.gbtn svg{width:18px;height:18px}
+.or{font-size:12px;color:var(--muted)}
 .strip{background:var(--accent-soft);border-radius:8px;padding:8px 8px 8px 12px;display:flex;align-items:center;gap:10px;font-size:13px;line-height:1.4}
 .strip p{margin:0;flex:1;min-width:0}
 .strip a{color:var(--accent);font-weight:600}
@@ -209,7 +217,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     <h1 id="introTitle">Thought<em>Pattern</em></h1>
     <p class="intro-tag">Write freely. See the patterns in how you think and feel.</p>
     <ul class="intro-pts">
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><div><b>Private</b><span>Entries stay on your phone. Your words go to an AI only to create readings.</span></div></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><div><b>Private</b><span>Entries stay on your phone. If you sign in to sync, they're encrypted before they leave it. Your words go to an AI only to create readings.</span></div></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg><div><b>Reflection, not therapy</b><span>Readings are possibilities, not diagnoses. For adults 18+.</span></div></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg><div><b>Need help now?</b><span><a href="tel:14416">Tele-MANAS 14416</a> · <a href="tel:18005990019">KIRAN 1800-599-0019</a> · free, 24×7</span></div></li>
     </ul>
@@ -221,7 +229,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     <div>
       <h1>Thought<em>Pattern</em></h1>
       <p class="sub">Write freely. AI reflects back the patterns in how you think and feel.</p>
-      <p class="fine">Private to this device · Not therapy or medical advice · 18+</p>
+      <p class="fine">Private · Not therapy or medical advice · 18+</p>
     </div>
     <div class="btnrow">
       <div class="store"><span class="dot" id="storeDot"></span><span id="storeText">Saved on this device</span></div>
@@ -236,14 +244,15 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
   </section>
 
   <section class="settings" id="settings" hidden>
-    <span class="label">Backup</span>
+    <div class="acct" id="acct" hidden></div>
+    <span class="label">Backup file</span>
     <div class="btnrow">
       <button type="button" id="exportBtn">Export entries (.json)</button>
       <label class="small" for="importFile">Import a backup:</label>
       <input type="file" id="importFile" accept="application/json,.json">
       <span id="settingsMsg" class="small"></span>
     </div>
-    <span class="small">Your entries are stored only on this device. Clearing browsing data deletes them, so export a backup now and then. Use Export and Import to move entries to another device.</span>
+    <span class="small" id="backupHelp">Your entries are stored only on this device. Clearing browsing data deletes them, so export a backup now and then. Use Export and Import to move entries to another device.</span>
   </section>
 
   <div class="grid">
@@ -351,13 +360,17 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
   const saved = lsGet(LS_DATA) || {};
   let entries = arr(saved.entries);   // newest first
   let analysis = saved.analysis || null;
+  let tombstones = saved.deleted && typeof saved.deleted === "object" ? saved.deleted : {}; // id → deletedAt, so deletes sync
   let analysing = false, analysisCtl = null, analysisErr = "", pendingDelete = null;
 
   const persist = () => {
-    const ok = lsSet(LS_DATA, {entries: entries.map(({readingState, ...e}) => e), analysis});
+    const ok = lsSet(LS_DATA, {entries: entries.map(({readingState, readingError, ...e}) => e), analysis, deleted: tombstones});
     $("#storeDot").className = "dot" + (ok ? " ok" : "");
     $("#storeText").textContent = ok ? "Saved on this device" : "Couldn't save. Export a backup";
+    if (ok) scheduleSync?.();
+    renderStore?.();
   };
+  let scheduleSync = null, renderStore = null, isSynced = () => false; // set up by the sync module below
   const showingExamples = () => entries.length === 0;
 
   // ---------- OpenAI (Responses API, JSON mode) ----------
@@ -432,7 +445,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
         note: String(r?.note || "").slice(0,200)
       };
     }catch(e){ entry.readingError = e.message || "Quick read failed."; }
-    delete entry.readingState; persist(); renderAll();
+    delete entry.readingState; entry.updatedAt = Date.now(); persist(); renderAll();
   }
 
   async function runAnalysis(){
@@ -576,7 +589,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     if (!text) return;
     if (activePrompt && !text.includes(activePrompt)) text = `Prompt: ${activePrompt}\n\n${text}`;
     activePrompt = ""; $("#promptLine").hidden = true;
-    const entry = {id: "e" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), text, createdAt: Date.now()};
+    const entry = {id: "e" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), text, createdAt: Date.now(), updatedAt: Date.now()};
     entries.unshift(entry); ta.value = ""; updateCount();
     try { localStorage.removeItem(LS_DRAFT); } catch {}
     pendingDelete = null; persist(); renderAll();
@@ -584,7 +597,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
   }
   function onDelete(id){
     if (pendingDelete !== id){ pendingDelete = id; renderEntries(); return; }
-    pendingDelete = null; entries = entries.filter(e => e.id !== id); persist(); renderAll();
+    pendingDelete = null; entries = entries.filter(e => e.id !== id); tombstones[id] = Date.now(); persist(); renderAll();
   }
   function updateCount(){
     const n = $("#entryText").value.trim().split(/\s+/).filter(Boolean).length; const touch = window.matchMedia("(pointer:coarse)").matches;
@@ -602,7 +615,7 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     try{
       const d = JSON.parse(await f.text()); const inc = arr(d.entries).filter(e => e && typeof e.text === "string");
       const have = new Set(entries.map(e => e.id)); let added = 0;
-      for (const e of inc) if (!have.has(e.id)){ entries.push({id: String(e.id || ("e"+Math.random().toString(36).slice(2))), text: e.text, createdAt: Number(e.createdAt)||Date.now(), reading: e.reading || null}); added++; }
+      for (const e of inc) if (!have.has(e.id)){ entries.push({id: String(e.id || ("e"+Math.random().toString(36).slice(2))), text: e.text, createdAt: Number(e.createdAt)||Date.now(), updatedAt: Date.now(), reading: e.reading || null}); added++; }
       entries.sort((a,b) => b.createdAt - a.createdAt);
       if (!analysis && d.analysis) analysis = d.analysis;
       persist(); renderAll(); $("#settingsMsg").textContent = `Imported ${added} new entr${added===1?"y":"ies"}.`;
@@ -677,7 +690,8 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
     const last = Number(lsGet(LS_BACKUP)) || 0, snooze = Number(lsGet(LS_SNOOZE)) || 0, t = Date.now();
     const unsaved = entries.filter(e => e.createdAt > last).length;
     const oldest = entries.length ? entries[entries.length - 1].createdAt : t;
-    const due = entries.length >= 3 && unsaved >= 3 && t > snooze && (last ? t - last > 14*day : t - oldest > 7*day);
+    const synced = isSynced();
+    const due = !synced && entries.length >= 3 && unsaved >= 3 && t > snooze && (last ? t - last > 14*day : t - oldest > 7*day);
     $("#backupNudge").hidden = !due || first;
     if (due) $("#backupNudgeText").textContent = last
       ? `${unsaved} entries since your last backup (${Math.round((t - last)/day)} days ago). They live only on this device.`
@@ -829,6 +843,225 @@ dialog#shareDlg::backdrop{background:rgba(0,0,0,.45)}
   $("#shareSave").onclick = () => { if (!shareBlob) return; const a = document.createElement("a"); a.href = URL.createObjectURL(shareBlob); a.download = shareName(); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   $("#shareClose").onclick = () => $("#shareDlg").close();
   $("#shareDlg").addEventListener("click", e => { if (e.target === $("#shareDlg")) $("#shareDlg").close(); });
+
+
+  // ---------- account & encrypted sync (Supabase) ----------
+  // Entries are encrypted on this device with a key made from the user's passphrase (AES-GCM, PBKDF2).
+  // The server stores only ciphertext, so nobody else — including the app owner — can read journals.
+  const b64 = buf => { const a = new Uint8Array(buf); let s = ""; for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+  const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  async function deriveKey(pass, salt){
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({name:"PBKDF2", salt: unb64(salt), iterations: 310000, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, true, ["encrypt","decrypt"]);
+  }
+  async function encrypt(key, obj){ const iv = crypto.getRandomValues(new Uint8Array(12)); const c = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, new TextEncoder().encode(JSON.stringify(obj))); return {iv: b64(iv), cipher: b64(c)}; }
+  async function decrypt(key, iv, cipher){ const p = await crypto.subtle.decrypt({name:"AES-GCM", iv: unb64(iv)}, key, unb64(cipher)); return JSON.parse(new TextDecoder().decode(p)); }
+  const KEY_CHECK = "thoughtpattern-key-check";
+
+  const cloud = { sb: null, user: null, key: null, state: "off", msg: "", busy: false, again: false, lastSync: 0, confirm: "" };
+  const lsKey = k => `inner-ledger-${k}-${cloud.user?.id}`;
+  const G_ICON = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+
+  renderStore = () => {
+    if (cloud.state !== "ready") return;
+    $("#storeDot").className = "dot ok";
+    $("#storeText").textContent = cloud.busy ? "Syncing…" : cloud.msg ? "Sync paused" : "Synced to your account";
+  };
+  isSynced = () => cloud.state === "ready";
+  let syncT; scheduleSync = () => { if (cloud.state !== "ready") return; clearTimeout(syncT); syncT = setTimeout(sync, 1500); };
+
+  async function cloudInit(){
+    let cfg;
+    try { cfg = await (await fetch("/api/config", {cache:"no-store"})).json(); } catch {}
+    if (!cfg?.supabaseUrl || !cfg?.supabaseAnonKey) return; // sign-in not set up on this site
+    try{
+      const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+      cloud.sb = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    }catch{ return; } // offline: sign-in unavailable this time
+    $("#settingsBtn").textContent = "Account";
+    cloud.state = "signedOut"; renderAcct();
+    cloud.sb.auth.onAuthStateChange((_ev, session) => { const was = cloud.user?.id; cloud.user = session?.user || null; if (cloud.user?.id !== was) setTimeout(afterAuth, 0); });
+    const { data } = await cloud.sb.auth.getSession();
+    cloud.user = data?.session?.user || null; afterAuth();
+  }
+
+  async function afterAuth(){
+    cloud.key = null; cloud.msg = "";
+    if (!cloud.user){ cloud.state = "signedOut"; renderAcct(); renderAll(); return; }
+    const raw = lsGet(lsKey("key"));
+    if (raw){
+      try { cloud.key = await crypto.subtle.importKey("raw", unb64(raw), "AES-GCM", true, ["encrypt","decrypt"]); cloud.state = "ready"; renderAcct(); sync(); return; } catch {}
+    }
+    const { data, error } = await cloud.sb.from("profiles").select("salt,key_check").eq("user_id", cloud.user.id).maybeSingle();
+    if (error){ cloud.state = "error"; cloud.msg = "Couldn't reach your account. Check your connection and reopen this panel."; renderAcct(); return; }
+    cloud.profile = data; cloud.state = data ? "unlock" : "create";
+    renderAcct(); $("#settings").hidden = false; // ask for the passphrase right away
+  }
+
+  async function useKey(key){
+    cloud.key = key; lsSet(lsKey("key"), b64(await crypto.subtle.exportKey("raw", key)));
+    cloud.state = "ready"; cloud.msg = ""; renderAcct(); renderAll(); await sync();
+  }
+  async function createPass(p1, p2){
+    if (p1.length < 8) return fail("Use at least 8 characters.");
+    if (p1 !== p2) return fail("The two passphrases don't match.");
+    busyAcct("Setting up encryption…");
+    const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
+    const key = await deriveKey(p1, salt);
+    const kc = await encrypt(key, KEY_CHECK);
+    const { error } = await cloud.sb.from("profiles").upsert({ user_id: cloud.user.id, salt, key_check: JSON.stringify(kc) });
+    if (error) return fail("Couldn't save to your account. Please try again.");
+    lsSet(lsKey("pull"), 0); lsSet(lsKey("push"), 0);
+    await useKey(key);
+  }
+  async function unlock(pass){
+    busyAcct("Unlocking…");
+    try{
+      const key = await deriveKey(pass, cloud.profile.salt);
+      const kc = JSON.parse(cloud.profile.key_check);
+      if (await decrypt(key, kc.iv, kc.cipher) !== KEY_CHECK) throw 0;
+      await useKey(key);
+    }catch{ fail("That passphrase didn't work. Try again."); }
+  }
+  async function startOver(){ // forgot passphrase: wipe the cloud copy, keep this device's entries, set a new passphrase
+    busyAcct("Removing the old cloud copy…");
+    await cloud.sb.from("entries").delete().eq("user_id", cloud.user.id);
+    await cloud.sb.from("profiles").delete().eq("user_id", cloud.user.id);
+    cloud.profile = null; cloud.state = "create"; cloud.msg = ""; renderAcct();
+  }
+  async function deleteCloud(){
+    busyAcct("Deleting your cloud data…");
+    await cloud.sb.from("entries").delete().eq("user_id", cloud.user.id);
+    await cloud.sb.from("profiles").delete().eq("user_id", cloud.user.id);
+    await signOut(false); cloud.msg = "Your cloud data was deleted. Entries on this device are unchanged."; renderAcct();
+  }
+  async function signOut(clearDevice){
+    try { localStorage.removeItem(lsKey("key")); localStorage.removeItem(lsKey("pull")); localStorage.removeItem(lsKey("push")); } catch {}
+    await cloud.sb.auth.signOut().catch(() => {});
+    if (clearDevice){ entries = []; analysis = null; tombstones = {}; persist(); }
+    cloud.user = null; cloud.key = null; cloud.state = "signedOut"; renderAcct(); renderAll();
+  }
+
+  async function sync(){
+    if (cloud.state !== "ready" || !cloud.key) return;
+    if (cloud.busy){ cloud.again = true; return; }
+    cloud.busy = true; renderStore(); const uid = cloud.user.id;
+    try{
+      // 1) pull changes from other devices (a 3-day overlap covers small clock differences between devices)
+      const since = Math.max(0, (Number(lsGet(lsKey("pull"))) || 0) - 3*day);
+      let maxSeen = Number(lsGet(lsKey("pull"))) || 0, changed = false;
+      for (let from = 0; ; from += 500){
+        const { data, error } = await cloud.sb.from("entries").select("id,iv,cipher,deleted,updated_at").gt("updated_at", since).order("updated_at").range(from, from + 499);
+        if (error) throw error;
+        for (const row of data){
+          maxSeen = Math.max(maxSeen, Number(row.updated_at));
+          const t = Number(row.updated_at);
+          if (row.id === "__analysis"){
+            if (row.deleted) continue;
+            const a = await decrypt(cloud.key, row.iv, row.cipher).catch(() => null);
+            if (a && (!analysis || (a.at || 0) > (analysis.at || 0))){ analysis = a; changed = true; }
+            continue;
+          }
+          const i = entries.findIndex(e => e.id === row.id), local = entries[i];
+          const lt = local ? (local.updatedAt || local.createdAt) : 0;
+          if (row.deleted){
+            if (local && lt <= t){ entries.splice(i, 1); changed = true; }
+            tombstones[row.id] = Math.max(tombstones[row.id] || 0, t); continue;
+          }
+          if ((tombstones[row.id] || 0) >= t) continue; // deleted here after that version
+          if (!local || t > lt){
+            const e = await decrypt(cloud.key, row.iv, row.cipher).catch(() => null);
+            if (!e || typeof e.text !== "string") continue;
+            const next = {id: row.id, text: e.text, createdAt: Number(e.createdAt) || t, updatedAt: t, reading: e.reading || null};
+            if (local) entries[i] = next; else entries.push(next);
+            changed = true;
+          }
+        }
+        if (data.length < 500) break;
+      }
+      if (changed){ entries.sort((a,b) => b.createdAt - a.createdAt); lsSet(LS_DATA, {entries: entries.map(({readingState, readingError, ...e}) => e), analysis, deleted: tombstones}); }
+      lsSet(lsKey("pull"), maxSeen);
+
+      // 2) push this device's changes
+      const lastPush = Number(lsGet(lsKey("push"))) || 0, startedAt = Date.now(), rows = [];
+      for (const e of entries){
+        const t = e.updatedAt || e.createdAt;
+        if (t > lastPush && !e.readingState) rows.push({user_id: uid, id: e.id, ...(await encrypt(cloud.key, {text: e.text, createdAt: e.createdAt, reading: e.reading || null})), deleted: false, updated_at: t});
+      }
+      for (const [id, t] of Object.entries(tombstones)) if (t > lastPush) rows.push({user_id: uid, id, iv: "", cipher: "", deleted: true, updated_at: t});
+      if (analysis && (analysis.at || 0) > lastPush) rows.push({user_id: uid, id: "__analysis", ...(await encrypt(cloud.key, analysis)), deleted: false, updated_at: analysis.at});
+      for (let i = 0; i < rows.length; i += 200){
+        const { error } = await cloud.sb.from("entries").upsert(rows.slice(i, i + 200), {onConflict: "user_id,id"});
+        if (error) throw error;
+      }
+      lsSet(lsKey("push"), startedAt);
+      // tombstones older than 90 days are no longer needed on this device
+      for (const [id, t] of Object.entries(tombstones)) if (startedAt - t > 90*day) delete tombstones[id];
+      cloud.lastSync = Date.now(); cloud.msg = "";
+      if (changed) renderAll();
+    }catch(e){
+      console.warn("sync failed", e);
+      cloud.msg = navigator.onLine === false ? "You're offline. Changes will sync when you're back online." : "Couldn't sync just now. It will retry automatically.";
+      setTimeout(scheduleSync, 30000);
+    }finally{
+      cloud.busy = false; renderStore(); renderAcct();
+      if (cloud.again){ cloud.again = false; scheduleSync(); }
+    }
+  }
+
+  // --- account panel ---
+  function fail(msg){ cloud.msg = msg; cloud.working = ""; renderAcct(); }
+  function busyAcct(msg){ cloud.working = msg; cloud.msg = ""; renderAcct(); }
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : new Date(t).toLocaleString(undefined, {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"}); };
+  function pwField(ph){ const i = document.createElement("input"); i.type = "password"; i.placeholder = ph; i.autocomplete = "new-password"; i.required = true; return i; }
+  function renderAcct(){
+    const box = $("#acct"); if (!cloud.sb){ box.hidden = true; return; }
+    box.hidden = false; box.replaceChildren(el("span","label","Account & sync"));
+    $("#backupHelp").textContent = cloud.state === "ready" ? "Your journal is backed up to your account automatically. You can still export a file copy." : "Your entries are stored only on this device. Sign in above to back them up automatically, or export a backup file now and then.";
+    if (cloud.working){ const st = el("div","status"); st.append(el("span","spin"), el("span",null,cloud.working)); box.append(st); cloud.working = ""; return; }
+    const say = t => box.append(el("p",null,t));
+    if (cloud.state === "signedOut"){
+      say("Sign in to back up your journal and use it on your phone and laptop. Entries are encrypted on your device before upload.");
+      const g = el("button","gbtn"); g.type = "button"; g.innerHTML = G_ICON + "<span>Continue with Google</span>";
+      g.onclick = () => cloud.sb.auth.signInWithOAuth({provider: "google", options: {redirectTo: location.origin + "/"}});
+      box.append(g, el("span","or","or get a sign-in link by email"));
+      const f = el("form"); const em = document.createElement("input"); em.type = "email"; em.placeholder = "you@example.com"; em.autocomplete = "email"; em.required = true;
+      const sb = el("button",null,"Email me a link"); sb.type = "submit"; f.append(em, sb);
+      f.onsubmit = async ev => { ev.preventDefault(); busyAcct("Sending…"); const { error } = await cloud.sb.auth.signInWithOtp({email: em.value.trim(), options: {emailRedirectTo: location.origin + "/"}}); cloud.msg = error ? "Couldn't send the link. Check the address and try again in a minute." : `Check ${em.value.trim()} for a sign-in link. Open it on this device.`; renderAcct(); };
+      box.append(f);
+    } else if (cloud.state === "create"){
+      say(`Signed in as ${cloud.user.email}. Now choose a passphrase. It encrypts your journal on this device, so only you can read it.`);
+      const f = el("form"), p1 = pwField("Passphrase (8+ characters)"), p2 = pwField("Type it again"), b = el("button","primary","Encrypt & sync"); b.type = "submit";
+      f.append(p1, p2, el("span","warn","Write it down somewhere safe. If you forget it, the cloud copy can't be recovered by anyone. The entries on this device stay safe."), b);
+      f.onsubmit = ev => { ev.preventDefault(); createPass(p1.value, p2.value); }; box.append(f);
+    } else if (cloud.state === "unlock"){
+      say(`Signed in as ${cloud.user.email}. Enter your passphrase to unlock your journal on this device.`);
+      const f = el("form"), p = pwField("Passphrase"), b = el("button","primary","Unlock"); p.autocomplete = "current-password"; b.type = "submit"; f.append(p, b);
+      f.onsubmit = ev => { ev.preventDefault(); unlock(p.value); }; box.append(f);
+      const fo = el("button","ghost", cloud.confirm === "over" ? "Tap again: delete the cloud copy and set a new passphrase" : "Forgot passphrase?"); fo.type = "button";
+      fo.onclick = () => { if (cloud.confirm !== "over"){ cloud.confirm = "over"; renderAcct(); return; } cloud.confirm = ""; startOver(); };
+      box.append(fo);
+      const so = el("button","ghost","Sign out"); so.type = "button"; so.onclick = () => signOut(false); box.append(so);
+    } else if (cloud.state === "ready"){
+      say(`Signed in as ${cloud.user.email}. ` + (cloud.busy ? "Syncing…" : cloud.lastSync ? `Synced ${ago(cloud.lastSync)}.` : ""));
+      const row = el("div","btnrow");
+      const now = el("button",null,"Sync now"); now.type = "button"; now.onclick = () => sync();
+      const so = el("button",null,"Sign out"); so.type = "button"; so.onclick = () => signOut(false);
+      row.append(now, so); box.append(row);
+      const more = el("div","btnrow");
+      const clr = el("button","ghost", cloud.confirm === "clear" ? "Tap again to confirm" : "Sign out & remove entries from this device"); clr.type = "button";
+      clr.onclick = () => { if (cloud.confirm !== "clear"){ cloud.confirm = "clear"; renderAcct(); return; } cloud.confirm = ""; signOut(true); };
+      const del = el("button","ghost", cloud.confirm === "del" ? "Tap again to delete everything in the cloud" : "Delete my cloud data"); del.type = "button";
+      del.onclick = () => { if (cloud.confirm !== "del"){ cloud.confirm = "del"; renderAcct(); return; } cloud.confirm = ""; deleteCloud(); };
+      more.append(clr, del); box.append(more);
+    } else if (cloud.state === "error"){
+      const r = el("button",null,"Try again"); r.type = "button"; r.onclick = afterAuth; box.append(r);
+    }
+    if (cloud.msg) box.append(el("p", /couldn't|didn't|don't|least/i.test(cloud.msg) ? "err" : "small", cloud.msg));
+  }
+  window.addEventListener("online", () => scheduleSync());
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") scheduleSync(); });
+  cloudInit();
 
   $("#composer").addEventListener("submit", onSave);
   $("#entryText").addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") onSave(e); });
