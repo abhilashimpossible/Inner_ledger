@@ -22,6 +22,7 @@ If any entry suggests self-harm, suicidal thoughts, abuse or danger, set risk.fl
 
 Reply with ONLY this JSON object (arrays may be empty when nothing applies):
 {
+ "summary": {"points": ["3-5 key takeaways in plain, everyday language (no jargon), one short sentence each, most important first"], "focus": "the single most useful thing to work on this week, one sentence"},
  "overview": "3-4 sentence synthesis of the central dynamic",
  "risk": {"flag": false, "note": ""},
  "patterns": [{"title": "short name, e.g. 'Criticism → shame → withdrawal'", "description": "1-2 sentences", "evidence": ["exact short quote"], "confidence": "low|medium|high"}],
